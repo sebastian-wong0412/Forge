@@ -1,0 +1,14 @@
+---
+description: Phase 1A scope — do not build later product features unasked
+alwaysApply: true
+---
+
+# Phase 1A scope
+
+Cycle is the current root planning unit. Vision is intentionally not a separate entity yet. Review belongs to Cycle. Check-ins are append-only. Key Result current value and progress are derived. DailyExecution is frozen Phase 0 infrastructure.
+
+Do not implement unless the user explicitly asks: authentication, cloud sync, AI, notifications, calendar, mobile, analytics, permissions, multi-user collaboration, frontend, Tauri, ReviewType, polymorphic reviews, or a Vision entity.
+
+Do not expand DailyExecution. Do not delete the `visions` or `daily_executions` tables in this phase.
+
+Do not silently change persisted JSON/SQL contracts. Prefer a new migration and an API version discussion.
