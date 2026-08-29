@@ -5,6 +5,7 @@ use forge_application::{
     ProjectService, ReviewService, TaskService,
 };
 use sqlx::SqlitePool;
+use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 
 use crate::sqlite::{
@@ -24,6 +25,7 @@ mod objectives;
 mod projects;
 mod reviews;
 mod tasks;
+mod today;
 
 pub use error::ApiError;
 
@@ -103,6 +105,7 @@ pub fn router(pool: SqlitePool) -> Router {
     Router::new()
         .route("/health", get(health::health))
         .nest("/api/v1", v1())
+        .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http())
         .with_state(state)
 }
@@ -156,6 +159,8 @@ fn v1() -> Router<AppState> {
         .route("/tasks/{id}/start", post(tasks::start))
         .route("/tasks/{id}/complete", post(tasks::complete))
         .route("/tasks/{id}/cancel", post(tasks::cancel))
+        .route("/tasks/{id}/schedule", post(tasks::schedule))
+        .route("/today", get(today::get))
         .route(
             "/tasks/{task_id}/daily-executions",
             get(daily_executions::list_by_task).post(daily_executions::create),

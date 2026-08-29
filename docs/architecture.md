@@ -1,11 +1,16 @@
 # Architecture
 
-Forge is a local-first OKR and execution system. Phase 1A is the backend semantic model around Cycle. It does not include a frontend or Tauri.
+Forge is a local-first OKR and execution system. Phase 1A is the backend semantic model around Cycle. Phase 1B-2 adds a desktop client that talks to the HTTP API. The React UI must not open SQLite or duplicate domain rules.
 
 ## Layers
 
 ```
-API (Axum)  →  Application  →  Domain
+Tauri 2 window
+  → React + TypeScript
+  → HTTP API client
+  → forge-server (Axum)
+  → Application
+  → Domain
 Infrastructure (SQLite) implements application repository traits
 ```
 
@@ -88,8 +93,14 @@ See [api.md](api.md) for routes and [database.md](database.md) for tables.
 - Application: in-memory repositories (`#[cfg(test)]`)
 - Server: tempfile SQLite + repository round-trips + Axum `oneshot`
 
-## Not in Phase 1A
+## Desktop client
 
-Auth, cloud, AI, notifications, calendar, mobile, analytics, permissions, collaboration, frontend, Tauri, ReviewType, polymorphic reviews, a Vision entity.
+`src/` is the React UI. `src-tauri/` is a thin window and is not part of the Cargo workspace. `forge-server` remains independently runnable. The UI uses `VITE_API_BASE_URL` (default `http://127.0.0.1:8080`).
+
+The server enables permissive CORS so the Vite/Tauri origins can call the local API. This is transport infrastructure, not a business-rule change.
+
+## Not in Phase 1A / 1B-2
+
+Auth, cloud, AI, notifications, calendar, mobile, analytics, permissions, collaboration, ReviewType, polymorphic reviews, a Vision entity.
 
 Known limitations: no user timezone for daily dates, no pagination, no KR scoring beyond derived progress, DailyExecution is still a leftover write surface.

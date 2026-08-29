@@ -4,7 +4,7 @@ use axum::http::StatusCode;
 use forge_application::{CreateTask, UpdateTask};
 use time::OffsetDateTime;
 
-use super::dto::{CreateTaskRequest, TaskResponse, UpdateTaskRequest};
+use super::dto::{CreateTaskRequest, ScheduleTaskRequest, TaskResponse, UpdateTaskRequest};
 use super::{ApiError, AppState, parse_id};
 
 pub async fn create(
@@ -20,7 +20,7 @@ pub async fn create(
             CreateTask {
                 title: body.title,
                 description: body.description,
-                scheduled_on: None,
+                scheduled_on: body.scheduled_on,
             },
             OffsetDateTime::now_utc(),
         )
@@ -90,5 +90,18 @@ pub async fn cancel(
 ) -> Result<Json<TaskResponse>, ApiError> {
     let id = parse_id(&id, "task")?;
     let task = state.tasks.cancel(id, OffsetDateTime::now_utc()).await?;
+    Ok(Json(TaskResponse::from(&task)))
+}
+
+pub async fn schedule(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Json(body): Json<ScheduleTaskRequest>,
+) -> Result<Json<TaskResponse>, ApiError> {
+    let id = parse_id(&id, "task")?;
+    let task = state
+        .tasks
+        .schedule(id, body.scheduled_on, OffsetDateTime::now_utc())
+        .await?;
     Ok(Json(TaskResponse::from(&task)))
 }

@@ -105,14 +105,54 @@ Allowed only when the Key Result is draft or active, the Objective is not comple
 | Method | Path | Notes |
 |---|---|---|
 | `GET` | `/api/v1/projects/:project_id/tasks` | |
-| `POST` | `/api/v1/projects/:project_id/tasks` | Project must be active |
+| `POST` | `/api/v1/projects/:project_id/tasks` | Project must be active; optional `scheduled_on` |
 | `GET` | `/api/v1/tasks/:id` | |
-| `PATCH` | `/api/v1/tasks/:id` | Title and description only |
+| `PATCH` | `/api/v1/tasks/:id` | Title and description only; not status or `scheduled_on` |
 | `POST` | `/api/v1/tasks/:id/start` | `todo` → `in_progress` |
 | `POST` | `/api/v1/tasks/:id/complete` | `in_progress` → `done`, sets `completed_at` |
 | `POST` | `/api/v1/tasks/:id/cancel` | `todo` or `in_progress` → `cancelled` |
+| `POST` | `/api/v1/tasks/:id/schedule` | Set or clear `scheduled_on` |
 
 Cancelled tasks are not active work.
+
+Create body: `{ "title", "description?", "scheduled_on?" }`.
+
+`scheduled_on` is the calendar date (`YYYY-MM-DD`) the user intends to work on the task. It is not a deadline. Omit or send `null` for an unscheduled task.
+
+Schedule body: `{ "scheduled_on": "YYYY-MM-DD" | null }`. `null` unschedules. Terminal tasks cannot be scheduled.
+
+### Today
+
+| Method | Path | Notes |
+|---|---|---|
+| `GET` | `/api/v1/today?date=YYYY-MM-DD` | `date` is required |
+
+`date` is the caller's calendar day. The server does not infer today from UTC or the machine clock.
+
+Response:
+
+```json
+{
+  "date": "2026-08-30",
+  "scheduled": [],
+  "overdue": [],
+  "unscheduled_in_progress": [],
+  "completed": []
+}
+```
+
+Each list item is a Task. Buckets are exclusive:
+
+- `scheduled`: `scheduled_on == date` and status is `todo` or `in_progress`
+- `overdue`: `scheduled_on < date` and status is `todo` or `in_progress`
+- `unscheduled_in_progress`: `in_progress` with no schedule
+- `completed`: `done` and `completed_at` falls on the requested calendar date using `completed_date_basis = utc`
+
+Unscheduled todos, future schedules, cancelled tasks, and completions on other dates are omitted.
+
+Today is derived from Task. DailyExecution is not the source of Today.
+
+Known limitation: completion membership uses the UTC calendar date of `completed_at`. The desktop client does not infer a timezone; it lets the user change the queried `YYYY-MM-DD`.
 
 ### Reviews
 

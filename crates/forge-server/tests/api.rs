@@ -7,12 +7,21 @@ use serde_json::{Value, json};
 use tempfile::TempDir;
 use tower::ServiceExt;
 
-async fn setup() -> (axum::Router, TempDir) {
+const TODAY: &str = "2026-08-30";
+const YESTERDAY: &str = "2026-08-29";
+const TOMORROW: &str = "2026-08-31";
+
+async fn setup_with_pool() -> (axum::Router, TempDir, sqlx::SqlitePool) {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("forge.db");
     let pool = forge_server::db::connect(&path).await.unwrap();
     forge_server::db::migrate(&pool).await.unwrap();
-    (forge_server::api::router(pool), dir)
+    (forge_server::api::router(pool.clone()), dir, pool)
+}
+
+async fn setup() -> (axum::Router, TempDir) {
+    let (app, dir, _pool) = setup_with_pool().await;
+    (app, dir)
 }
 
 async fn send(
@@ -54,6 +63,96 @@ async fn create_cycle(app: &axum::Router) -> Value {
     .await;
     assert_eq!(status, StatusCode::CREATED);
     cycle
+}
+
+async fn active_project_id(app: &axum::Router) -> String {
+    let cycle = create_cycle(app).await;
+    let cycle_id = cycle["id"].as_str().unwrap();
+    let (status, objective) = send(
+        app,
+        "POST",
+        &format!("/api/v1/cycles/{cycle_id}/objectives"),
+        Some(json!({ "title": "Ship" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED);
+    let objective_id = objective["id"].as_str().unwrap();
+
+    let (status, project) = send(
+        app,
+        "POST",
+        &format!("/api/v1/objectives/{objective_id}/projects"),
+        Some(json!({ "title": "Work" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED);
+    let project_id = project["id"].as_str().unwrap();
+
+    let (status, active) = send(
+        app,
+        "POST",
+        &format!("/api/v1/projects/{project_id}/activate"),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(active["status"], "active");
+    project_id.to_string()
+}
+
+async fn create_task(
+    app: &axum::Router,
+    project_id: &str,
+    title: &str,
+    scheduled_on: Option<&str>,
+) -> Value {
+    let mut body = json!({ "title": title });
+    if let Some(scheduled_on) = scheduled_on {
+        body["scheduled_on"] = json!(scheduled_on);
+    }
+    let (status, task) = send(
+        app,
+        "POST",
+        &format!("/api/v1/projects/{project_id}/tasks"),
+        Some(body),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED, "{task}");
+    task
+}
+
+fn task_ids(bucket: &Value) -> Vec<String> {
+    bucket
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|task| task["id"].as_str().unwrap().to_string())
+        .collect()
+}
+
+fn assert_task_fields(task: &Value) {
+    assert!(task.get("id").is_some());
+    assert!(task.get("project_id").is_some());
+    assert!(task.get("title").is_some());
+    assert!(task.get("status").is_some());
+    assert!(task.get("scheduled_on").is_some());
+    assert!(task.get("completed_at").is_some());
+}
+
+fn assert_client_validation(status: StatusCode) {
+    assert!(
+        status == StatusCode::BAD_REQUEST || status == StatusCode::UNPROCESSABLE_ENTITY,
+        "expected existing validation status, got {status}"
+    );
+}
+
+async fn set_completed_at(pool: &sqlx::SqlitePool, task_id: &str, completed_at: &str) {
+    sqlx::query("UPDATE tasks SET completed_at = ? WHERE id = ?")
+        .bind(completed_at)
+        .bind(task_id)
+        .execute(pool)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -244,6 +343,7 @@ async fn cycle_hierarchy_checkins_and_reviews() {
     assert_eq!(status, StatusCode::CREATED);
     let task_id = task["id"].as_str().unwrap();
     assert_eq!(task["status"], "todo");
+    assert!(task["scheduled_on"].is_null());
     assert!(task["completed_at"].is_null());
 
     let (status, started) = send(
@@ -493,4 +593,420 @@ async fn foreign_keys_are_enforced() {
     .await
     .unwrap_err();
     assert!(err.to_string().to_lowercase().contains("foreign key"));
+}
+
+#[tokio::test]
+async fn create_task_accepts_optional_scheduled_on() {
+    let (app, _dir) = setup().await;
+    let project_id = active_project_id(&app).await;
+
+    let omitted = create_task(&app, &project_id, "Unscheduled omitted", None).await;
+    assert!(omitted["scheduled_on"].is_null());
+    assert_task_fields(&omitted);
+
+    let (status, explicit_null) = send(
+        &app,
+        "POST",
+        &format!("/api/v1/projects/{project_id}/tasks"),
+        Some(json!({
+            "title": "Unscheduled task",
+            "description": null,
+            "scheduled_on": null
+        })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED);
+    assert!(explicit_null["scheduled_on"].is_null());
+    assert!(explicit_null["description"].is_null());
+
+    let (status, scheduled) = send(
+        &app,
+        "POST",
+        &format!("/api/v1/projects/{project_id}/tasks"),
+        Some(json!({
+            "title": "Finish research",
+            "description": "Complete the first draft",
+            "scheduled_on": TODAY
+        })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED);
+    assert_eq!(scheduled["scheduled_on"], TODAY);
+    assert_eq!(scheduled["description"], "Complete the first draft");
+    assert_task_fields(&scheduled);
+
+    for invalid in ["not-a-date", "2026-13-40", "2026-08-30T00:00:00Z"] {
+        let (status, _) = send(
+            &app,
+            "POST",
+            &format!("/api/v1/projects/{project_id}/tasks"),
+            Some(json!({
+                "title": "Bad date",
+                "scheduled_on": invalid
+            })),
+        )
+        .await;
+        assert_client_validation(status);
+    }
+}
+
+#[tokio::test]
+async fn schedule_updates_or_clears_scheduled_on() {
+    let (app, _dir) = setup().await;
+    let project_id = active_project_id(&app).await;
+    let task = create_task(&app, &project_id, "Plan work", None).await;
+    let task_id = task["id"].as_str().unwrap();
+
+    let (status, scheduled) = send(
+        &app,
+        "POST",
+        &format!("/api/v1/tasks/{task_id}/schedule"),
+        Some(json!({ "scheduled_on": TODAY })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(scheduled["scheduled_on"], TODAY);
+    assert_eq!(scheduled["status"], "todo");
+    assert_task_fields(&scheduled);
+
+    let (status, rescheduled) = send(
+        &app,
+        "POST",
+        &format!("/api/v1/tasks/{task_id}/schedule"),
+        Some(json!({ "scheduled_on": TOMORROW })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(rescheduled["scheduled_on"], TOMORROW);
+
+    let (status, unscheduled) = send(
+        &app,
+        "POST",
+        &format!("/api/v1/tasks/{task_id}/schedule"),
+        Some(json!({ "scheduled_on": null })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(unscheduled["scheduled_on"].is_null());
+
+    let started = create_task(&app, &project_id, "Started work", None).await;
+    let started_id = started["id"].as_str().unwrap();
+    let (status, _) = send(
+        &app,
+        "POST",
+        &format!("/api/v1/tasks/{started_id}/start"),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let (status, in_progress) = send(
+        &app,
+        "POST",
+        &format!("/api/v1/tasks/{started_id}/schedule"),
+        Some(json!({ "scheduled_on": TODAY })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(in_progress["status"], "in_progress");
+    assert_eq!(in_progress["scheduled_on"], TODAY);
+
+    let done = create_task(&app, &project_id, "Finished", None).await;
+    let done_id = done["id"].as_str().unwrap();
+    send(
+        &app,
+        "POST",
+        &format!("/api/v1/tasks/{done_id}/start"),
+        None,
+    )
+    .await;
+    send(
+        &app,
+        "POST",
+        &format!("/api/v1/tasks/{done_id}/complete"),
+        None,
+    )
+    .await;
+    let (status, body) = send(
+        &app,
+        "POST",
+        &format!("/api/v1/tasks/{done_id}/schedule"),
+        Some(json!({ "scheduled_on": TODAY })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(body["error"]["code"], "domain");
+
+    let cancelled = create_task(&app, &project_id, "Dropped", None).await;
+    let cancelled_id = cancelled["id"].as_str().unwrap();
+    send(
+        &app,
+        "POST",
+        &format!("/api/v1/tasks/{cancelled_id}/cancel"),
+        None,
+    )
+    .await;
+    let (status, body) = send(
+        &app,
+        "POST",
+        &format!("/api/v1/tasks/{cancelled_id}/schedule"),
+        Some(json!({ "scheduled_on": TODAY })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(body["error"]["code"], "domain");
+
+    let (status, body) = send(
+        &app,
+        "POST",
+        "/api/v1/tasks/01900000-0000-7000-8000-000000000000/schedule",
+        Some(json!({ "scheduled_on": TODAY })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+    assert_eq!(body["error"]["code"], "not_found");
+}
+
+#[tokio::test]
+async fn today_requires_an_explicit_date() {
+    let (app, _dir) = setup().await;
+
+    let (status, _) = send(&app, "GET", "/api/v1/today", None).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+
+    let (status, _) = send(&app, "GET", "/api/v1/today?date=not-a-date", None).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+
+    let (status, _) = send(&app, "GET", "/api/v1/today?date=2026-08-30T00:00:00Z", None).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn today_buckets_follow_the_requested_date() {
+    let (app, _dir, pool) = setup_with_pool().await;
+    let project_id = active_project_id(&app).await;
+
+    let scheduled = create_task(&app, &project_id, "Scheduled today", Some(TODAY)).await;
+    let overdue = create_task(&app, &project_id, "Scheduled yesterday", Some(YESTERDAY)).await;
+    let unscheduled_in_progress =
+        create_task(&app, &project_id, "Started without a date", None).await;
+    let completed_today = create_task(&app, &project_id, "Done today", None).await;
+    let completed_other = create_task(&app, &project_id, "Done tomorrow", None).await;
+    let future = create_task(&app, &project_id, "Future", Some(TOMORROW)).await;
+    let inbox = create_task(&app, &project_id, "Inbox todo", None).await;
+    let cancelled = create_task(&app, &project_id, "Cancelled", Some(TODAY)).await;
+
+    send(
+        &app,
+        "POST",
+        &format!(
+            "/api/v1/tasks/{}/start",
+            unscheduled_in_progress["id"].as_str().unwrap()
+        ),
+        None,
+    )
+    .await;
+    send(
+        &app,
+        "POST",
+        &format!(
+            "/api/v1/tasks/{}/start",
+            completed_today["id"].as_str().unwrap()
+        ),
+        None,
+    )
+    .await;
+    send(
+        &app,
+        "POST",
+        &format!(
+            "/api/v1/tasks/{}/complete",
+            completed_today["id"].as_str().unwrap()
+        ),
+        None,
+    )
+    .await;
+    send(
+        &app,
+        "POST",
+        &format!(
+            "/api/v1/tasks/{}/start",
+            completed_other["id"].as_str().unwrap()
+        ),
+        None,
+    )
+    .await;
+    send(
+        &app,
+        "POST",
+        &format!(
+            "/api/v1/tasks/{}/complete",
+            completed_other["id"].as_str().unwrap()
+        ),
+        None,
+    )
+    .await;
+    send(
+        &app,
+        "POST",
+        &format!("/api/v1/tasks/{}/cancel", cancelled["id"].as_str().unwrap()),
+        None,
+    )
+    .await;
+
+    set_completed_at(
+        &pool,
+        completed_today["id"].as_str().unwrap(),
+        "2026-08-30T15:00:00Z",
+    )
+    .await;
+    set_completed_at(
+        &pool,
+        completed_other["id"].as_str().unwrap(),
+        "2026-08-31T15:00:00Z",
+    )
+    .await;
+
+    let (status, today) = send(&app, "GET", &format!("/api/v1/today?date={TODAY}"), None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(today["date"], TODAY);
+    assert!(today.get("completed_date_basis").is_none());
+
+    let scheduled_ids = task_ids(&today["scheduled"]);
+    let overdue_ids = task_ids(&today["overdue"]);
+    let in_progress_ids = task_ids(&today["unscheduled_in_progress"]);
+    let completed_ids = task_ids(&today["completed"]);
+
+    assert_eq!(scheduled_ids, vec![scheduled["id"].as_str().unwrap()]);
+    assert_eq!(overdue_ids, vec![overdue["id"].as_str().unwrap()]);
+    assert_eq!(
+        in_progress_ids,
+        vec![unscheduled_in_progress["id"].as_str().unwrap()]
+    );
+    assert_eq!(completed_ids, vec![completed_today["id"].as_str().unwrap()]);
+
+    for task in today["scheduled"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .chain(today["overdue"].as_array().unwrap())
+        .chain(today["unscheduled_in_progress"].as_array().unwrap())
+        .chain(today["completed"].as_array().unwrap())
+    {
+        assert_task_fields(task);
+    }
+
+    let excluded = [
+        future["id"].as_str().unwrap(),
+        inbox["id"].as_str().unwrap(),
+        cancelled["id"].as_str().unwrap(),
+        completed_other["id"].as_str().unwrap(),
+    ];
+    let mut all = scheduled_ids.clone();
+    all.extend(overdue_ids);
+    all.extend(in_progress_ids);
+    all.extend(completed_ids.clone());
+    let unique = all
+        .iter()
+        .cloned()
+        .collect::<std::collections::HashSet<_>>();
+    assert_eq!(all.len(), unique.len());
+    for id in excluded {
+        assert!(!all.iter().any(|item| item == id), "{id} leaked into today");
+    }
+
+    let (status, tomorrow) =
+        send(&app, "GET", &format!("/api/v1/today?date={TOMORROW}"), None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(tomorrow["date"], TOMORROW);
+    assert!(task_ids(&tomorrow["scheduled"]).contains(&future["id"].as_str().unwrap().to_string()));
+    assert!(
+        task_ids(&tomorrow["overdue"]).contains(&scheduled["id"].as_str().unwrap().to_string())
+    );
+    assert!(
+        task_ids(&tomorrow["completed"])
+            .contains(&completed_other["id"].as_str().unwrap().to_string())
+    );
+    assert!(
+        !task_ids(&tomorrow["completed"])
+            .contains(&completed_today["id"].as_str().unwrap().to_string())
+    );
+}
+
+#[tokio::test]
+async fn today_is_independent_of_daily_execution() {
+    let (app, _dir) = setup().await;
+    let project_id = active_project_id(&app).await;
+
+    let inbox = create_task(&app, &project_id, "Legacy inbox", None).await;
+    let inbox_id = inbox["id"].as_str().unwrap();
+    let (status, execution) = send(
+        &app,
+        "POST",
+        &format!("/api/v1/tasks/{inbox_id}/daily-executions"),
+        Some(json!({
+            "execution_date": TODAY,
+            "notes": "legacy",
+            "status": "planned"
+        })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED);
+    assert_eq!(execution["execution_date"], TODAY);
+
+    let scheduled = create_task(&app, &project_id, "No daily execution", Some(TODAY)).await;
+    let scheduled_id = scheduled["id"].as_str().unwrap();
+
+    let (status, today) = send(&app, "GET", &format!("/api/v1/today?date={TODAY}"), None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(task_ids(&today["scheduled"]), vec![scheduled_id]);
+    assert!(!task_ids(&today["scheduled"]).contains(&inbox_id.to_string()));
+    assert!(today["overdue"].as_array().unwrap().is_empty());
+    assert!(
+        today["unscheduled_in_progress"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+    assert!(today["completed"].as_array().unwrap().is_empty());
+
+    let (status, by_date) = send(
+        &app,
+        "GET",
+        &format!("/api/v1/daily-executions?date={TODAY}"),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(by_date.as_array().unwrap().len(), 1);
+    assert_eq!(by_date[0]["task_id"], inbox_id);
+}
+
+#[tokio::test]
+async fn today_completed_uses_fixed_utc_midnight_bounds() {
+    let (app, _dir, pool) = setup_with_pool().await;
+    let project_id = active_project_id(&app).await;
+
+    let before_midnight = create_task(&app, &project_id, "Before midnight", None).await;
+    let after_midnight = create_task(&app, &project_id, "After midnight", None).await;
+    let before_id = before_midnight["id"].as_str().unwrap().to_string();
+    let after_id = after_midnight["id"].as_str().unwrap().to_string();
+
+    for id in [&before_id, &after_id] {
+        send(&app, "POST", &format!("/api/v1/tasks/{id}/start"), None).await;
+        send(&app, "POST", &format!("/api/v1/tasks/{id}/complete"), None).await;
+    }
+
+    set_completed_at(&pool, &before_id, "2026-08-30T23:59:59Z").await;
+    set_completed_at(&pool, &after_id, "2026-08-31T00:00:00Z").await;
+
+    let (status, today) = send(&app, "GET", &format!("/api/v1/today?date={TODAY}"), None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(task_ids(&today["completed"]), vec![before_id.clone()]);
+    assert!(!task_ids(&today["completed"]).contains(&after_id));
+
+    let (status, tomorrow) =
+        send(&app, "GET", &format!("/api/v1/today?date={TOMORROW}"), None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(task_ids(&tomorrow["completed"]), vec![after_id]);
+    assert!(!task_ids(&tomorrow["completed"]).contains(&before_id));
 }

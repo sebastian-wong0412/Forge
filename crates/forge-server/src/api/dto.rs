@@ -1,4 +1,4 @@
-use forge_application::KeyResultSnapshot;
+use forge_application::{KeyResultSnapshot, TodayResult};
 use forge_domain::{CheckIn, Cycle, DailyExecution, Objective, Project, Review, Task};
 use serde::{Deserialize, Serialize};
 use time::{Date, OffsetDateTime};
@@ -240,6 +240,14 @@ impl From<&Project> for ProjectResponse {
 pub struct CreateTaskRequest {
     pub title: String,
     pub description: Option<String>,
+    #[serde(default, with = "iso_date::option")]
+    pub scheduled_on: Option<Date>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ScheduleTaskRequest {
+    #[serde(default, with = "iso_date::option")]
+    pub scheduled_on: Option<Date>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -255,6 +263,8 @@ pub struct TaskResponse {
     pub title: String,
     pub description: Option<String>,
     pub status: String,
+    #[serde(with = "iso_date::option")]
+    pub scheduled_on: Option<Date>,
     #[serde(with = "time::serde::rfc3339::option")]
     pub completed_at: Option<OffsetDateTime>,
     #[serde(with = "time::serde::rfc3339")]
@@ -271,6 +281,7 @@ impl From<&Task> for TaskResponse {
             title: value.title().as_str().to_string(),
             description: value.description().map(str::to_string),
             status: value.status().as_str().to_string(),
+            scheduled_on: value.scheduled_on(),
             completed_at: value.completed_at(),
             created_at: value.created_at(),
             updated_at: value.updated_at(),
@@ -365,6 +376,32 @@ impl From<&Review> for ReviewResponse {
             period_end: value.period_end(),
             created_at: value.created_at(),
             updated_at: value.updated_at(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct TodayResponse {
+    #[serde(with = "iso_date")]
+    pub date: Date,
+    pub scheduled: Vec<TaskResponse>,
+    pub overdue: Vec<TaskResponse>,
+    pub unscheduled_in_progress: Vec<TaskResponse>,
+    pub completed: Vec<TaskResponse>,
+}
+
+impl From<&TodayResult> for TodayResponse {
+    fn from(value: &TodayResult) -> Self {
+        Self {
+            date: value.date,
+            scheduled: value.scheduled.iter().map(TaskResponse::from).collect(),
+            overdue: value.overdue.iter().map(TaskResponse::from).collect(),
+            unscheduled_in_progress: value
+                .unscheduled_in_progress
+                .iter()
+                .map(TaskResponse::from)
+                .collect(),
+            completed: value.completed.iter().map(TaskResponse::from).collect(),
         }
     }
 }
