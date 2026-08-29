@@ -96,10 +96,16 @@ Belongs to a project. `completed_at` is set when the task is completed.
 | `project_id` | FK → `projects.id` |
 | `title`, `description` | |
 | `status` | `todo`, `in_progress`, `done`, `cancelled` |
+| `scheduled_on` | Optional `YYYY-MM-DD` (from 0003). Intent to work that day, not a due date. |
 | `completed_at` | Optional RFC3339 |
 | `created_at` / `updated_at` | RFC3339 |
 
-Index: `idx_tasks_project_id` (from 0001).
+Indexes: `idx_tasks_project_id` (0001), `idx_tasks_scheduled_on` (0003).
+
+## Migration 0003
+
+Adds `tasks.scheduled_on TEXT` and an index. Existing rows stay `NULL`.
+`daily_executions` is unchanged. There is no backfill from DailyExecution.
 
 ### `reviews`
 
