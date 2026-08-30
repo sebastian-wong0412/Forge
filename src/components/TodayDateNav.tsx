@@ -1,4 +1,5 @@
 import type { IsoDate } from "../api/types";
+import { useT } from "../i18n";
 import { shiftCalendarDate } from "../lib/dates";
 
 export function TodayDateNav({
@@ -10,17 +11,19 @@ export function TodayDateNav({
   localToday: IsoDate;
   onChange: (date: IsoDate) => void;
 }) {
+  const t = useT();
+
   return (
-    <div className="row date-nav" role="group" aria-label="选择日期">
+    <div className="row date-nav" role="group" aria-label={t("today.dateNav")}>
       <button type="button" className="btn" onClick={() => onChange(shiftCalendarDate(date, -1))}>
-        ‹ 前一天
+        {t("today.prevDay")}
       </button>
       <span className="date-nav-current">{date}</span>
       <button type="button" className="btn" onClick={() => onChange(localToday)}>
-        今天
+        {t("today.today")}
       </button>
       <button type="button" className="btn" onClick={() => onChange(shiftCalendarDate(date, 1))}>
-        后一天 ›
+        {t("today.nextDay")}
       </button>
     </div>
   );

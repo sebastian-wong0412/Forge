@@ -7,6 +7,7 @@ import {
   type IsoDate,
   type Task,
 } from "../api";
+import { tCurrent } from "../i18n";
 
 export function useTaskMutations(onChanged: () => Promise<void> | void) {
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -20,7 +21,7 @@ export function useTaskMutations(onChanged: () => Promise<void> | void) {
       await action();
       await onChanged();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "无法更新任务，请稍后重试。");
+      setError(err instanceof Error ? err.message : tCurrent("error.taskUpdateFailed"));
     } finally {
       setBusyId(null);
     }

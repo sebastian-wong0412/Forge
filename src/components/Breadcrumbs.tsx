@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useT } from "../i18n";
 
 export interface BreadcrumbItem {
   label: string;
@@ -6,8 +7,10 @@ export interface BreadcrumbItem {
 }
 
 export function Breadcrumbs({ items }: { items: BreadcrumbItem[] }) {
+  const t = useT();
+
   return (
-    <nav className="breadcrumbs" aria-label="层级导航">
+    <nav className="breadcrumbs" aria-label={t("nav.breadcrumbs")}>
       {items.map((item, index) => (
         <span key={`${item.label}-${index}`} className="breadcrumb-item">
           {index > 0 ? <span className="breadcrumb-sep">→</span> : null}

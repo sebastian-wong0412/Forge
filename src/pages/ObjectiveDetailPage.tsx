@@ -25,9 +25,11 @@ import { LoadingState } from "../components/LoadingState";
 import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { useLoad } from "../hooks/useLoad";
+import { useT, type TranslateFn } from "../i18n";
 import { statusLabel } from "../lib/status";
 
 export function ObjectiveDetailPage() {
+  const t = useT();
   const { objectiveId = "" } = useParams();
   const objective = useLoad(() => getObjective(objectiveId), [objectiveId]);
   const cycle = useLoad(
@@ -48,33 +50,31 @@ export function ObjectiveDetailPage() {
       await action();
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "无法更新目标，请稍后重试。");
+      setError(err instanceof Error ? err.message : t("error.objectiveUpdateFailed"));
     }
   }
 
   if (objective.loading && !objective.data) {
-    return <LoadingState label="正在加载目标…" />;
+    return <LoadingState label={t("objectives.loading")} />;
   }
   if (objective.error && !objective.data) {
     return <ErrorState message={objective.error} onRetry={() => void objective.reload()} />;
   }
   if (!objective.data) {
-    return <ErrorState message="未找到该目标。" />;
+    return <ErrorState message={t("error.objectiveNotFound")} />;
   }
 
   return (
     <div className="stack">
       <Breadcrumbs
         items={[
-          { label: "周期", to: "/cycles" },
-          ...(cycle.data
-            ? [{ label: cycle.data.name, to: `/cycles/${cycle.data.id}` }]
-            : []),
+          { label: t("cycles.breadcrumb"), to: "/cycles" },
+          ...(cycle.data ? [{ label: cycle.data.name, to: `/cycles/${cycle.data.id}` }] : []),
           { label: objective.data.title },
         ]}
       />
       <PageHeader
-        kicker="目标"
+        kicker={t("objectives.kicker")}
         title={objective.data.title}
         meta={
           <>
@@ -93,7 +93,7 @@ export function ObjectiveDetailPage() {
                 className="btn"
                 onClick={() => void run(() => activateObjective(objectiveId))}
               >
-                开始
+                {t("common.start")}
               </button>
             ) : null}
             {objective.data.status === "active" ? (
@@ -102,7 +102,7 @@ export function ObjectiveDetailPage() {
                 className="btn"
                 onClick={() => void run(() => completeObjective(objectiveId))}
               >
-                完成
+                {t("common.complete")}
               </button>
             ) : null}
             {objective.data.status !== "archived" ? (
@@ -111,7 +111,7 @@ export function ObjectiveDetailPage() {
                 className="btn"
                 onClick={() => void run(() => archiveObjective(objectiveId))}
               >
-                归档
+                {t("common.archive")}
               </button>
             ) : null}
           </>
@@ -136,18 +136,27 @@ export function ObjectiveDetailPage() {
   );
 }
 
-function keyResultSummary(keyResult: KeyResult, percent: string | null): string {
+function keyResultSummary(keyResult: KeyResult, percent: string | null, t: TranslateFn): string {
   if (keyResult.progress_kind === "milestone") {
-    return `${statusLabel(keyResult.current_state ?? "not_started")}${percent ? ` · ${percent}` : ""}`;
+    return `${statusLabel(keyResult.current_state ?? "not_started")}${percent ? t("keyResults.summary.percent", { percent }) : ""}`;
   }
   if (keyResult.progress_kind === "qualitative") {
-    return keyResult.latest_note ?? "还没有进展";
+    return keyResult.latest_note ?? t("keyResults.noProgress");
   }
-  const current = keyResult.current_value ?? "—";
+  const current = keyResult.current_value ?? t("common.emDash");
   const unit = keyResult.unit ? ` ${keyResult.unit}` : "";
-  const start = keyResult.start_value ?? "—";
-  const target = keyResult.target_value !== null ? ` · ${keyResult.target_value} 目标` : "";
-  return `${current}${unit} 当前 · ${start} 起点${target}${percent ? ` · ${percent}` : ""}`;
+  const start = keyResult.start_value ?? t("common.emDash");
+  const target =
+    keyResult.target_value !== null
+      ? t("keyResults.summary.target", { target: keyResult.target_value })
+      : "";
+  return t("keyResults.summary.current", {
+    current,
+    unit,
+    start,
+    target,
+    percent: percent ? t("keyResults.summary.percent", { percent }) : "",
+  });
 }
 
 function KeyResultsSection({
@@ -163,6 +172,7 @@ function KeyResultsSection({
   error: string | null;
   onChanged: () => Promise<void>;
 }) {
+  const t = useT();
   const [title, setTitle] = useState("");
   const [progressKind, setProgressKind] = useState<ProgressKind>("numeric");
   const [startValue, setStartValue] = useState("0");
@@ -178,9 +188,7 @@ function KeyResultsSection({
         title,
         progress_kind: progressKind,
         start_value:
-          progressKind === "numeric" || progressKind === "percentage"
-            ? Number(startValue)
-            : null,
+          progressKind === "numeric" || progressKind === "percentage" ? Number(startValue) : null,
         target_value:
           progressKind === "numeric" || progressKind === "percentage"
             ? targetValue === ""
@@ -195,17 +203,17 @@ function KeyResultsSection({
       setUnit("");
       await onChanged();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "创建失败，请稍后重试。");
+      setFormError(err instanceof Error ? err.message : t("error.createFailed"));
     }
   }
 
   return (
     <section className="stack">
-      <h2 className="section-title">关键结果</h2>
+      <h2 className="section-title">{t("keyResults.section")}</h2>
       {loading && keyResults.length === 0 ? <LoadingState /> : null}
       {error ? <ErrorState message={error} /> : null}
       {keyResults.length === 0 && !loading ? (
-        <EmptyState title="还没有关键结果" detail="写出你希望看到的结果，不一定是数字。" />
+        <EmptyState title={t("keyResults.empty.title")} detail={t("keyResults.empty.detail")} />
       ) : null}
       {keyResults.map((keyResult) => (
         <KeyResultCard key={keyResult.id} keyResult={keyResult} onChanged={onChanged} />
@@ -213,26 +221,26 @@ function KeyResultsSection({
       <form className="panel stack" onSubmit={onSubmit}>
         <div className="form-grid">
           <div className="field">
-            <label htmlFor="kr-title">标题</label>
+            <label htmlFor="kr-title">{t("keyResults.form.title")}</label>
             <input id="kr-title" value={title} onChange={(event) => setTitle(event.target.value)} required />
           </div>
           <div className="field">
-            <label htmlFor="kr-kind">类型</label>
+            <label htmlFor="kr-kind">{t("keyResults.form.kind")}</label>
             <select
               id="kr-kind"
               value={progressKind}
               onChange={(event) => setProgressKind(event.target.value as ProgressKind)}
             >
-              <option value="numeric">数值</option>
-              <option value="percentage">百分比</option>
-              <option value="milestone">里程碑</option>
-              <option value="qualitative">定性</option>
+              <option value="numeric">{t("keyResults.kind.numeric")}</option>
+              <option value="percentage">{t("keyResults.kind.percentage")}</option>
+              <option value="milestone">{t("keyResults.kind.milestone")}</option>
+              <option value="qualitative">{t("keyResults.kind.qualitative")}</option>
             </select>
           </div>
           {progressKind === "numeric" || progressKind === "percentage" ? (
             <>
               <div className="field">
-                <label htmlFor="kr-start">起始值</label>
+                <label htmlFor="kr-start">{t("keyResults.form.start")}</label>
                 <input
                   id="kr-start"
                   type="number"
@@ -243,7 +251,7 @@ function KeyResultsSection({
                 />
               </div>
               <div className="field">
-                <label htmlFor="kr-target">目标值</label>
+                <label htmlFor="kr-target">{t("keyResults.form.target")}</label>
                 <input
                   id="kr-target"
                   type="number"
@@ -257,7 +265,7 @@ function KeyResultsSection({
           ) : null}
           {progressKind === "numeric" ? (
             <div className="field">
-              <label htmlFor="kr-unit">单位</label>
+              <label htmlFor="kr-unit">{t("keyResults.form.unit")}</label>
               <input id="kr-unit" value={unit} onChange={(event) => setUnit(event.target.value)} />
             </div>
           ) : null}
@@ -265,7 +273,7 @@ function KeyResultsSection({
         {formError ? <ErrorState message={formError} /> : null}
         <div>
           <button type="submit" className="btn btn-primary">
-            添加关键结果
+            {t("keyResults.form.submit")}
           </button>
         </div>
       </form>
@@ -280,6 +288,7 @@ function KeyResultCard({
   keyResult: KeyResult;
   onChanged: () => Promise<void>;
 }) {
+  const t = useT();
   const percent =
     keyResult.progress === null ? null : `${Math.round(keyResult.progress * 100)}%`;
 
@@ -290,7 +299,7 @@ function KeyResultCard({
         <StatusBadge status={keyResult.status} />
       </div>
       {keyResult.description ? <p>{keyResult.description}</p> : null}
-      <p className="muted">{keyResultSummary(keyResult, percent)}</p>
+      <p className="muted">{keyResultSummary(keyResult, percent, t)}</p>
       {keyResult.progress !== null ? (
         <div className="progress" aria-hidden="true">
           <span style={{ width: `${Math.min(100, Math.max(0, keyResult.progress * 100))}%` }} />
@@ -303,7 +312,7 @@ function KeyResultCard({
             className="btn"
             onClick={() => void activateKeyResult(keyResult.id).then(onChanged)}
           >
-            开始
+            {t("common.start")}
           </button>
         ) : null}
         {keyResult.status === "active" ? (
@@ -312,7 +321,7 @@ function KeyResultCard({
             className="btn"
             onClick={() => void completeKeyResult(keyResult.id).then(onChanged)}
           >
-            完成
+            {t("common.complete")}
           </button>
         ) : null}
       </div>
@@ -338,6 +347,7 @@ function ProjectsSection({
   error: string | null;
   onCreated: () => Promise<void>;
 }) {
+  const t = useT();
   const [title, setTitle] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [draftCreated, setDraftCreated] = useState<Project | null>(null);
@@ -351,17 +361,17 @@ function ProjectsSection({
       setDraftCreated(created);
       await onCreated();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "创建失败，请稍后重试。");
+      setFormError(err instanceof Error ? err.message : t("error.createFailed"));
     }
   }
 
   return (
     <section className="stack">
-      <h2 className="section-title">项目</h2>
+      <h2 className="section-title">{t("projects.section")}</h2>
       {loading && projects.length === 0 ? <LoadingState /> : null}
       {error ? <ErrorState message={error} /> : null}
       {projects.length === 0 && !loading ? (
-        <EmptyState title="还没有项目" detail="把目标拆成可以持续推进的一组工作。" />
+        <EmptyState title={t("projects.empty.title")} detail={t("projects.empty.detail")} />
       ) : null}
       {projects.map((project) => (
         <Link key={project.id} to={`/projects/${project.id}`} className="card card-link">
@@ -374,7 +384,7 @@ function ProjectsSection({
       ))}
       <form className="panel row" onSubmit={onSubmit}>
         <div className="field">
-          <label htmlFor="project-title">新项目</label>
+          <label htmlFor="project-title">{t("projects.form.label")}</label>
           <input
             id="project-title"
             value={title}
@@ -383,34 +393,34 @@ function ProjectsSection({
           />
         </div>
         <button type="submit" className="btn btn-primary">
-          添加
+          {t("common.add")}
         </button>
       </form>
       {draftCreated && draftCreated.status === "draft" ? (
         <div className="panel next-step">
           <p>
-            <strong>项目已创建。</strong>
+            <strong>{t("projects.created.title")}</strong>
           </p>
-          <p>可以直接添加任务。开始项目后，父级周期和目标也会进入进行中。</p>
+          <p>{t("projects.created.detail")}</p>
           <div className="row">
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() =>
-              void activateProject(draftCreated.id)
-                .then(() => {
-                  setDraftCreated(null);
-                  return onCreated();
-                })
-                .catch((err: unknown) => {
-                  setFormError(
-                    err instanceof Error ? err.message : "无法开始项目，请稍后重试。",
-                  );
-                })
-            }
-          >
-            开始项目
-          </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() =>
+                void activateProject(draftCreated.id)
+                  .then(() => {
+                    setDraftCreated(null);
+                    return onCreated();
+                  })
+                  .catch((err: unknown) => {
+                    setFormError(
+                      err instanceof Error ? err.message : t("error.projectStartFailed"),
+                    );
+                  })
+              }
+            >
+              {t("projects.created.start")}
+            </button>
           </div>
         </div>
       ) : null}

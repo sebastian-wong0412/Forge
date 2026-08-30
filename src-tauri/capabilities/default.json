@@ -3,5 +3,13 @@
   "identifier": "default",
   "description": "Capability for the main window",
   "windows": ["main"],
-  "permissions": ["core:default"]
+  "permissions": [
+    "core:default",
+    "allow-load-preferences",
+    "allow-save-preferences",
+    "allow-app-version",
+    "allow-check-for-updates",
+    "allow-download-installer",
+    "allow-open-external"
+  ]
 }

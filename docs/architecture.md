@@ -96,7 +96,7 @@ See [api.md](api.md) for routes and [database.md](database.md) for tables.
 
 ## Desktop client
 
-`src/` is the React UI. `src-tauri/` is a thin window and is not part of the Cargo workspace. In the packaged desktop app, Tauri starts `forge-server` as a bundled sidecar, stores SQLite under the Windows app local data directory (`%LOCALAPPDATA%\app.forge.desktop`), and the UI talks to `http://127.0.0.1:17340`. `forge-server` remains independently runnable for development (`FORGE_DATABASE_PATH` default `forge.db`, `FORGE_BIND_ADDR` default `127.0.0.1:8080`). Browser/Vite development can still use `VITE_API_BASE_URL` (default `http://127.0.0.1:8080`).
+`src/` is the React UI. `src-tauri/` is a thin window and is not part of the Cargo workspace. In the packaged desktop app, Tauri starts `forge-server` as a bundled sidecar, stores SQLite under the Windows app local data directory (`%LOCALAPPDATA%\app.forge.desktop`), and the UI talks to `http://127.0.0.1:17340`. Language and theme preferences are stored separately in the Tauri app config directory (`%APPDATA%\app.forge.desktop\settings.json`), not in SQLite. `forge-server` remains independently runnable for development (`FORGE_DATABASE_PATH` default `forge.db`, `FORGE_BIND_ADDR` default `127.0.0.1:8080`). Browser/Vite development can still use `VITE_API_BASE_URL` (default `http://127.0.0.1:8080`).
 
 The server enables permissive CORS so the Vite/Tauri origins can call the local API. This is transport infrastructure, not a business-rule change.
 

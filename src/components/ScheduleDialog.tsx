@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import type { IsoDate, Task } from "../api/types";
+import { useT } from "../i18n";
 import { localCalendarDate } from "../lib/dates";
 import { Dialog } from "./Dialog";
 
@@ -12,6 +13,7 @@ export function ScheduleDialog({
   onClose: () => void;
   onSave: (date: IsoDate) => Promise<void>;
 }) {
+  const t = useT();
   const [date, setDate] = useState(task.scheduled_on ?? localCalendarDate());
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -24,17 +26,17 @@ export function ScheduleDialog({
       await onSave(date);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "无法安排日期，请稍后重试。");
+      setError(err instanceof Error ? err.message : t("error.scheduleFailed"));
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <Dialog title={task.scheduled_on ? "改期" : "安排日期"} onClose={onClose}>
+    <Dialog title={task.scheduled_on ? t("tasks.reschedule") : t("tasks.schedule")} onClose={onClose}>
       <form className="stack" onSubmit={submit}>
         <div className="field">
-          <label htmlFor="scheduled-on">日期</label>
+          <label htmlFor="scheduled-on">{t("tasks.date")}</label>
           <input
             id="scheduled-on"
             type="date"
@@ -46,10 +48,10 @@ export function ScheduleDialog({
         {error ? <p className="state error">{error}</p> : null}
         <div className="row">
           <button type="submit" className="btn btn-primary" disabled={busy}>
-            保存
+            {t("common.save")}
           </button>
           <button type="button" className="btn" onClick={onClose}>
-            关闭
+            {t("common.close")}
           </button>
         </div>
       </form>

@@ -2,6 +2,7 @@ import { FormEvent, useState } from "react";
 import { createCheckIn, getCheckIns } from "../api";
 import type { MilestoneState, ProgressKind } from "../api/types";
 import { useLoad } from "../hooks/useLoad";
+import { useT } from "../i18n";
 import { localCalendarDate } from "../lib/dates";
 import { statusLabel } from "../lib/status";
 import { EmptyState } from "./EmptyState";
@@ -19,6 +20,7 @@ export function CheckInPanel({
   progressKind: ProgressKind;
   onKeyResultChanged: () => Promise<void>;
 }) {
+  const t = useT();
   const history = useLoad(() => getCheckIns(keyResultId), [keyResultId]);
   const [value, setValue] = useState("");
   const [state, setState] = useState<MilestoneState>("in_progress");
@@ -32,9 +34,7 @@ export function CheckInPanel({
     try {
       await createCheckIn(keyResultId, {
         value:
-          progressKind === "numeric" || progressKind === "percentage"
-            ? Number(value)
-            : null,
+          progressKind === "numeric" || progressKind === "percentage" ? Number(value) : null,
         state: progressKind === "milestone" ? state : null,
         note: note || null,
         checked_on: checkedOn,
@@ -44,18 +44,18 @@ export function CheckInPanel({
       await history.reload();
       await onKeyResultChanged();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "创建失败，请稍后重试。");
+      setError(err instanceof Error ? err.message : t("error.createFailed"));
     }
   }
 
   return (
     <div className="stack">
-      {history.loading && !history.data ? <LoadingState label="正在加载进展…" /> : null}
+      {history.loading && !history.data ? <LoadingState label={t("checkIn.loading")} /> : null}
       {history.error ? <ErrorState message={history.error} /> : null}
-      {history.data && history.data.length === 0 ? <EmptyState title="还没有进展。" /> : null}
+      {history.data && history.data.length === 0 ? <EmptyState title={t("checkIn.empty")} /> : null}
       {history.data && history.data.length > 0 ? (
         <div>
-          <h3 className="section-title">进展</h3>
+          <h3 className="section-title">{t("checkIn.section")}</h3>
           {history.data.map((checkIn) => (
             <div key={checkIn.id} className="check-in">
               <strong>
@@ -78,7 +78,7 @@ export function CheckInPanel({
           {progressKind === "numeric" || progressKind === "percentage" ? (
             <div className="field">
               <label htmlFor={`checkin-value-${keyResultId}`}>
-                {progressKind === "percentage" ? "百分比" : "数值"}
+                {progressKind === "percentage" ? t("checkIn.percentage") : t("checkIn.value")}
               </label>
               <input
                 id={`checkin-value-${keyResultId}`}
@@ -92,7 +92,7 @@ export function CheckInPanel({
           ) : null}
           {progressKind === "milestone" ? (
             <div className="field">
-              <label htmlFor={`checkin-state-${keyResultId}`}>进展</label>
+              <label htmlFor={`checkin-state-${keyResultId}`}>{t("checkIn.state")}</label>
               <select
                 id={`checkin-state-${keyResultId}`}
                 value={state}
@@ -107,7 +107,7 @@ export function CheckInPanel({
             </div>
           ) : null}
           <div className="field">
-            <label htmlFor={`checkin-date-${keyResultId}`}>记录日期</label>
+            <label htmlFor={`checkin-date-${keyResultId}`}>{t("checkIn.date")}</label>
             <input
               id={`checkin-date-${keyResultId}`}
               type="date"
@@ -118,7 +118,7 @@ export function CheckInPanel({
           </div>
           <div className="field">
             <label htmlFor={`checkin-note-${keyResultId}`}>
-              {progressKind === "qualitative" ? "说明" : "备注"}
+              {progressKind === "qualitative" ? t("checkIn.noteRequired") : t("checkIn.note")}
             </label>
             <input
               id={`checkin-note-${keyResultId}`}
@@ -131,7 +131,7 @@ export function CheckInPanel({
         {error ? <ErrorState message={error} /> : null}
         <div>
           <button type="submit" className="btn">
-            更新进展
+            {t("checkIn.submit")}
           </button>
         </div>
       </form>

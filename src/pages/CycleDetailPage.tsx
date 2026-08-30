@@ -21,8 +21,10 @@ import { NextStep } from "../components/NextStep";
 import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { useLoad } from "../hooks/useLoad";
+import { useT, type TranslateFn } from "../i18n";
 
 export function CycleDetailPage() {
+  const t = useT();
   const { cycleId = "" } = useParams();
   const cycle = useLoad(() => getCycle(cycleId), [cycleId]);
   const objectives = useLoad(() => getObjectives(cycleId), [cycleId]);
@@ -40,30 +42,27 @@ export function CycleDetailPage() {
       await action();
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "无法更新周期，请稍后重试。");
+      setError(err instanceof Error ? err.message : t("error.cycleUpdateFailed"));
     }
   }
 
   if (cycle.loading && !cycle.data) {
-    return <LoadingState label="正在加载周期…" />;
+    return <LoadingState label={t("cycles.loadingOne")} />;
   }
   if (cycle.error && !cycle.data) {
     return <ErrorState message={cycle.error} onRetry={() => void cycle.reload()} />;
   }
   if (!cycle.data) {
-    return <ErrorState message="未找到该周期。" />;
+    return <ErrorState message={t("error.cycleNotFound")} />;
   }
 
   return (
     <div className="stack">
       <Breadcrumbs
-        items={[
-          { label: "周期", to: "/cycles" },
-          { label: cycle.data.name },
-        ]}
+        items={[{ label: t("cycles.breadcrumb"), to: "/cycles" }, { label: cycle.data.name }]}
       />
       <PageHeader
-        kicker="周期"
+        kicker={t("cycles.kickerOne")}
         title={cycle.data.name}
         meta={
           <>
@@ -74,17 +73,17 @@ export function CycleDetailPage() {
           <>
             {cycle.data.status === "planning" ? (
               <button type="button" className="btn" onClick={() => void run(() => activateCycle(cycleId))}>
-                开始
+                {t("common.start")}
               </button>
             ) : null}
             {cycle.data.status === "active" ? (
               <button type="button" className="btn" onClick={() => void run(() => closeCycle(cycleId))}>
-                结束
+                {t("common.end")}
               </button>
             ) : null}
             {cycle.data.status !== "archived" ? (
               <button type="button" className="btn" onClick={() => void run(() => archiveCycle(cycleId))}>
-                归档
+                {t("common.archive")}
               </button>
             ) : null}
           </>
@@ -93,11 +92,11 @@ export function CycleDetailPage() {
       {error ? <ErrorState message={error} /> : null}
       {createdObjective ? (
         <NextStep
-          title="目标已创建"
-          detail="下一步：添加关键结果或创建一个项目。"
+          title={t("objectives.created.title")}
+          detail={t("objectives.created.detail")}
           action={
             <Link to={`/objectives/${createdObjective.id}`} className="btn btn-primary">
-              前往目标
+              {t("objectives.created.action")}
             </Link>
           }
         />
@@ -136,6 +135,7 @@ function ObjectivesSection({
   error: string | null;
   onCreated: (objective: Objective) => Promise<void>;
 }) {
+  const t = useT();
   const [title, setTitle] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -147,24 +147,24 @@ function ObjectivesSection({
       setTitle("");
       await onCreated(created);
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "创建失败，请稍后重试。");
+      setFormError(err instanceof Error ? err.message : t("error.createFailed"));
     }
   }
 
   return (
     <section className="stack">
-      <h2 className="section-title">目标</h2>
+      <h2 className="section-title">{t("objectives.section")}</h2>
       {loading && objectives.length === 0 ? <LoadingState /> : null}
       {error ? <ErrorState message={error} /> : null}
       {objectives.length === 0 && !loading ? (
-        <EmptyState title="还没有目标" detail="明确这个周期里你最想实现的结果。" />
+        <EmptyState title={t("objectives.empty.title")} detail={t("objectives.empty.detail")} />
       ) : null}
       {objectives.map((objective) => (
         <ObjectiveProjects key={objective.id} objective={objective} />
       ))}
       <form className="panel row" onSubmit={onSubmit}>
         <div className="field">
-          <label htmlFor="objective-title">新目标</label>
+          <label htmlFor="objective-title">{t("objectives.form.label")}</label>
           <input
             id="objective-title"
             value={title}
@@ -173,7 +173,7 @@ function ObjectivesSection({
           />
         </div>
         <button type="submit" className="btn btn-primary">
-          添加
+          {t("common.add")}
         </button>
       </form>
       {formError ? <ErrorState message={formError} /> : null}
@@ -182,6 +182,7 @@ function ObjectivesSection({
 }
 
 function ObjectiveProjects({ objective }: { objective: Objective }) {
+  const t = useT();
   const projects = useLoad(() => getProjects(objective.id), [objective.id]);
 
   return (
@@ -193,18 +194,18 @@ function ObjectiveProjects({ objective }: { objective: Objective }) {
       <p className="muted">
         {objective.start_on && objective.end_on
           ? `${objective.start_on} – ${objective.end_on}`
-          : "未设置日期"}
+          : t("common.dateUnset")}
       </p>
-      <ProjectSummary projects={projects.data ?? []} />
+      <ProjectSummary projects={projects.data ?? []} t={t} />
     </Link>
   );
 }
 
-function ProjectSummary({ projects }: { projects: Project[] }) {
+function ProjectSummary({ projects, t }: { projects: Project[]; t: TranslateFn }) {
   if (projects.length === 0) {
-    return <p className="muted">还没有项目</p>;
+    return <p className="muted">{t("objectives.noProjects")}</p>;
   }
-  return <p className="muted">{projects.length} 个项目</p>;
+  return <p className="muted">{t("objectives.projectCount", { count: projects.length })}</p>;
 }
 
 function ReviewsSection({
@@ -220,6 +221,7 @@ function ReviewsSection({
   error: string | null;
   onCreated: () => Promise<void>;
 }) {
+  const t = useT();
   const [content, setContent] = useState("");
   const [periodStart, setPeriodStart] = useState("");
   const [periodEnd, setPeriodEnd] = useState("");
@@ -239,31 +241,31 @@ function ReviewsSection({
       setPeriodEnd("");
       await onCreated();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "创建失败，请稍后重试。");
+      setFormError(err instanceof Error ? err.message : t("error.createFailed"));
     }
   }
 
   return (
     <section className="stack">
-      <h2 className="section-title">复盘</h2>
+      <h2 className="section-title">{t("reviews.section")}</h2>
       {loading && reviews.length === 0 ? <LoadingState /> : null}
       {error ? <ErrorState message={error} /> : null}
       {reviews.length === 0 && !loading ? (
-        <EmptyState title="还没有复盘" detail="写下这个周期的收获与调整。" />
+        <EmptyState title={t("reviews.empty.title")} detail={t("reviews.empty.detail")} />
       ) : null}
       {reviews.map((review) => (
         <article key={review.id} className="card">
           <p>{review.content}</p>
           <p className="muted">
             {review.period_start || review.period_end
-              ? `${review.period_start ?? "…"} – ${review.period_end ?? "…"}`
-              : "未设置时段"}
+              ? `${review.period_start ?? t("common.ellipsis")} – ${review.period_end ?? t("common.ellipsis")}`
+              : t("common.periodUnset")}
           </p>
         </article>
       ))}
       <form className="panel stack" onSubmit={onSubmit}>
         <div className="field">
-          <label htmlFor="review-content">新复盘</label>
+          <label htmlFor="review-content">{t("reviews.form.content")}</label>
           <textarea
             id="review-content"
             rows={4}
@@ -274,7 +276,7 @@ function ReviewsSection({
         </div>
         <div className="form-grid">
           <div className="field">
-            <label htmlFor="review-start">开始</label>
+            <label htmlFor="review-start">{t("reviews.form.start")}</label>
             <input
               id="review-start"
               type="date"
@@ -283,7 +285,7 @@ function ReviewsSection({
             />
           </div>
           <div className="field">
-            <label htmlFor="review-end">结束</label>
+            <label htmlFor="review-end">{t("reviews.form.end")}</label>
             <input
               id="review-end"
               type="date"
@@ -295,7 +297,7 @@ function ReviewsSection({
         {formError ? <ErrorState message={formError} /> : null}
         <div>
           <button type="submit" className="btn btn-primary">
-            添加复盘
+            {t("reviews.form.submit")}
           </button>
         </div>
       </form>

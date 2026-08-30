@@ -19,6 +19,8 @@ The packaged desktop app sets `FORGE_DATABASE_PATH` to:
 
 This is outside the current-user install directory (`%LOCALAPPDATA%\Forge`). The installer does not ship a database. Uninstalling Forge leaves this folder in place unless the user checks **Delete app data**.
 
+Language and theme preferences are not stored in SQLite. They live in the Tauri app config file `%APPDATA%\app.forge.desktop\settings.json`.
+
 ## Active Phase 1A schema
 
 Applied by `0001_initial.sql` plus `0002_cycle_semantics.sql`.

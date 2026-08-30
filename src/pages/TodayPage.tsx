@@ -6,9 +6,11 @@ import { ScheduleDialog } from "../components/ScheduleDialog";
 import { TodayView } from "../components/TodayView";
 import { useLoad } from "../hooks/useLoad";
 import { useTaskMutations } from "../hooks/useTaskMutations";
+import { useT } from "../i18n";
 import { localCalendarDate } from "../lib/dates";
 
 export function TodayPage() {
+  const t = useT();
   const localToday = localCalendarDate();
   const [date, setDate] = useState(localToday);
   const { data, error, loading, reload } = useLoad(() => getToday(date), [date]);
@@ -16,13 +18,13 @@ export function TodayPage() {
   const mutations = useTaskMutations(reload);
 
   if (loading && !data) {
-    return <LoadingState label="正在加载今日…" />;
+    return <LoadingState label={t("today.loading")} />;
   }
   if (error && !data) {
     return <ErrorState message={error} onRetry={() => void reload()} />;
   }
   if (!data) {
-    return <ErrorState message="无法加载今日任务。" onRetry={() => void reload()} />;
+    return <ErrorState message={t("error.todayLoadFailed")} onRetry={() => void reload()} />;
   }
 
   return (

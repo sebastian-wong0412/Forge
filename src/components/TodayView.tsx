@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import type { IsoDate, Task, TodayResponse } from "../api/types";
+import { useSettings } from "../i18n";
 import { formatCalendarDate } from "../lib/dates";
 import { EmptyState } from "./EmptyState";
 import { OnboardingCard } from "./OnboardingCard";
@@ -30,18 +31,19 @@ export function TodayView({
   onSchedule: (task: Task) => void;
   onUnschedule: (task: Task) => void;
 }) {
+  const { t, locale } = useSettings();
   const sections = [
-    { title: "今日计划", tasks: today.scheduled },
-    { title: "已逾期", tasks: today.overdue },
-    { title: "进行中（未安排）", tasks: today.unscheduled_in_progress },
-    { title: "今日完成", tasks: today.completed },
+    { title: t("today.section.scheduled"), tasks: today.scheduled },
+    { title: t("today.section.overdue"), tasks: today.overdue },
+    { title: t("today.section.unscheduled"), tasks: today.unscheduled_in_progress },
+    { title: t("today.section.completed"), tasks: today.completed },
   ].filter((section) => section.tasks.length > 0);
 
   return (
     <div className="stack">
       <PageHeader
-        kicker="今日"
-        title={formatCalendarDate(today.date)}
+        kicker={t("today.kicker")}
+        title={formatCalendarDate(today.date, locale)}
         actions={
           <TodayDateNav date={today.date} localToday={localToday} onChange={onDateChange} />
         }
@@ -50,11 +52,11 @@ export function TodayView({
         <OnboardingCard />
       ) : sections.length === 0 ? (
         <EmptyState
-          title="今天没有安排任务"
-          detail="先创建一个周期，然后建立项目和任务。"
+          title={t("today.empty.title")}
+          detail={t("today.empty.detail")}
           action={
             <Link to="/cycles" className="btn btn-primary">
-              去创建周期
+              {t("today.empty.action")}
             </Link>
           }
         />

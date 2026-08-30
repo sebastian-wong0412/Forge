@@ -20,8 +20,10 @@ import { StatusBadge } from "../components/StatusBadge";
 import { TaskList } from "../components/TaskList";
 import { useLoad } from "../hooks/useLoad";
 import { useTaskMutations } from "../hooks/useTaskMutations";
+import { useT } from "../i18n";
 
 export function ProjectDetailPage() {
+  const t = useT();
   const { projectId = "" } = useParams();
   const project = useLoad(() => getProject(projectId), [projectId]);
   const objective = useLoad(
@@ -42,28 +44,27 @@ export function ProjectDetailPage() {
       await action();
       await project.reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "无法更新项目，请稍后重试。");
+      setError(err instanceof Error ? err.message : t("error.projectUpdateFailed"));
     }
   }
 
   if (project.loading && !project.data) {
-    return <LoadingState label="正在加载项目…" />;
+    return <LoadingState label={t("projects.loading")} />;
   }
   if (project.error && !project.data) {
     return <ErrorState message={project.error} onRetry={() => void project.reload()} />;
   }
   if (!project.data) {
-    return <ErrorState message="未找到该项目。" />;
+    return <ErrorState message={t("error.projectNotFound")} />;
   }
 
-  const canCreateTask =
-    project.data.status === "draft" || project.data.status === "active";
+  const canCreateTask = project.data.status === "draft" || project.data.status === "active";
 
   return (
     <div className="stack">
       <Breadcrumbs
         items={[
-          { label: "周期", to: "/cycles" },
+          { label: t("cycles.breadcrumb"), to: "/cycles" },
           ...(cycle.data ? [{ label: cycle.data.name, to: `/cycles/${cycle.data.id}` }] : []),
           ...(objective.data
             ? [{ label: objective.data.title, to: `/objectives/${objective.data.id}` }]
@@ -72,7 +73,7 @@ export function ProjectDetailPage() {
         ]}
       />
       <PageHeader
-        kicker="项目"
+        kicker={t("projects.kicker")}
         title={project.data.title}
         meta={
           <>
@@ -88,7 +89,7 @@ export function ProjectDetailPage() {
                 className="btn"
                 onClick={() => void run(() => activateProject(projectId))}
               >
-                开始
+                {t("common.start")}
               </button>
             ) : null}
             {project.data.status === "active" ? (
@@ -97,7 +98,7 @@ export function ProjectDetailPage() {
                 className="btn"
                 onClick={() => void run(() => completeProject(projectId))}
               >
-                完成
+                {t("common.complete")}
               </button>
             ) : null}
             {project.data.status !== "archived" ? (
@@ -106,7 +107,7 @@ export function ProjectDetailPage() {
                 className="btn"
                 onClick={() => void run(() => archiveProject(projectId))}
               >
-                归档
+                {t("common.archive")}
               </button>
             ) : null}
           </>
@@ -114,16 +115,16 @@ export function ProjectDetailPage() {
       />
       {error ? <ErrorState message={error} /> : null}
       {mutations.error ? <ErrorState message={mutations.error} /> : null}
-      {tasks.loading && !tasks.data ? <LoadingState label="正在加载任务…" /> : null}
+      {tasks.loading && !tasks.data ? <LoadingState label={t("tasks.loading")} /> : null}
       {tasks.error && !tasks.data ? <ErrorState message={tasks.error} /> : null}
       {tasks.data && tasks.data.length === 0 ? (
-        <EmptyState title="还没有任务" detail="任务是可以直接开始执行的具体工作。" />
+        <EmptyState title={t("tasks.empty.title")} detail={t("tasks.empty.detail")} />
       ) : null}
       {tasks.data && tasks.data.length > 0 ? (
         <TaskList
-          title="任务"
+          title={t("tasks.section")}
           tasks={tasks.data}
-          empty="还没有任务"
+          empty={t("tasks.empty.title")}
           projectTitle={project.data.title}
           busyId={mutations.busyId}
           onStart={mutations.start}
@@ -133,11 +134,7 @@ export function ProjectDetailPage() {
           onUnschedule={mutations.unschedule}
         />
       ) : null}
-      <CreateTaskForm
-        projectId={projectId}
-        disabled={!canCreateTask}
-        onCreated={tasks.reload}
-      />
+      <CreateTaskForm projectId={projectId} disabled={!canCreateTask} onCreated={tasks.reload} />
       {mutations.scheduling ? (
         <ScheduleDialog
           task={mutations.scheduling}
@@ -158,6 +155,7 @@ function CreateTaskForm({
   disabled: boolean;
   onCreated: () => Promise<void>;
 }) {
+  const t = useT();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [scheduledOn, setScheduledOn] = useState("");
@@ -177,16 +175,16 @@ function CreateTaskForm({
       setScheduledOn("");
       await onCreated();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "创建失败，请稍后重试。");
+      setError(err instanceof Error ? err.message : t("error.createFailed"));
     }
   }
 
   return (
     <form className="panel stack" onSubmit={onSubmit}>
-      <h2 className="section-title">创建任务</h2>
+      <h2 className="section-title">{t("tasks.form.title")}</h2>
       <div className="form-grid">
         <div className="field">
-          <label htmlFor="task-title">标题</label>
+          <label htmlFor="task-title">{t("tasks.form.name")}</label>
           <input
             id="task-title"
             value={title}
@@ -196,7 +194,7 @@ function CreateTaskForm({
           />
         </div>
         <div className="field">
-          <label htmlFor="task-description">说明</label>
+          <label htmlFor="task-description">{t("tasks.form.description")}</label>
           <input
             id="task-description"
             value={description}
@@ -205,7 +203,7 @@ function CreateTaskForm({
           />
         </div>
         <div className="field">
-          <label htmlFor="task-scheduled">安排日期</label>
+          <label htmlFor="task-scheduled">{t("tasks.form.scheduled")}</label>
           <input
             id="task-scheduled"
             type="date"
@@ -215,13 +213,11 @@ function CreateTaskForm({
           />
         </div>
       </div>
-      {disabled ? (
-        <p className="muted">已结束或已归档的项目不能添加任务。</p>
-      ) : null}
+      {disabled ? <p className="muted">{t("tasks.form.disabled")}</p> : null}
       {error ? <ErrorState message={error} /> : null}
       <div>
         <button type="submit" className="btn btn-primary" disabled={disabled}>
-          创建任务
+          {t("tasks.form.submit")}
         </button>
       </div>
     </form>

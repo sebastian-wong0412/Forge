@@ -10,9 +10,11 @@ import { TaskActions } from "../components/TaskActions";
 import { TaskStatusIcon } from "../components/TaskStatusIcon";
 import { useLoad } from "../hooks/useLoad";
 import { useTaskMutations } from "../hooks/useTaskMutations";
+import { useSettings } from "../i18n";
 import { formatTimestamp } from "../lib/dates";
 
 export function TaskDetailPage() {
+  const { t, locale } = useSettings();
   const { taskId = "" } = useParams();
   const task = useLoad(() => getTask(taskId), [taskId]);
   const project = useLoad(
@@ -30,21 +32,25 @@ export function TaskDetailPage() {
   const mutations = useTaskMutations(task.reload);
 
   if (task.loading && !task.data) {
-    return <LoadingState label="正在加载任务…" />;
+    return <LoadingState label={t("tasks.loading")} />;
   }
   if (task.error && !task.data) {
     return <ErrorState message={task.error} onRetry={() => void task.reload()} />;
   }
   const current = task.data;
   if (!current) {
-    return <ErrorState message="未找到该任务。" />;
+    return <ErrorState message={t("error.taskNotFound")} />;
   }
+
+  const completed = current.completed_at
+    ? ` · ${t("tasks.completedAt", { time: formatTimestamp(current.completed_at, locale) })}`
+    : "";
 
   return (
     <div className="stack">
       <Breadcrumbs
         items={[
-          { label: "周期", to: "/cycles" },
+          { label: t("cycles.breadcrumb"), to: "/cycles" },
           ...(cycle.data ? [{ label: cycle.data.name, to: `/cycles/${cycle.data.id}` }] : []),
           ...(objective.data
             ? [{ label: objective.data.title, to: `/objectives/${objective.data.id}` }]
@@ -56,7 +62,7 @@ export function TaskDetailPage() {
         ]}
       />
       <PageHeader
-        kicker="任务"
+        kicker={t("tasks.kicker")}
         title={current.title}
         meta={
           <span className="row">
@@ -67,10 +73,13 @@ export function TaskDetailPage() {
       />
       {mutations.error ? <ErrorState message={mutations.error} /> : null}
       <section className="card stack">
-        {current.description ? <p>{current.description}</p> : <p className="muted">暂无说明</p>}
+        {current.description ? <p>{current.description}</p> : <p className="muted">{t("common.noDescription")}</p>}
         <p className="muted">
-          安排到 {current.scheduled_on ?? "—"} · 创建于 {formatTimestamp(current.created_at)}
-          {current.completed_at ? ` · 完成于 ${formatTimestamp(current.completed_at)}` : ""}
+          {t("tasks.meta", {
+            scheduled: current.scheduled_on ?? t("common.emDash"),
+            created: formatTimestamp(current.created_at, locale),
+            completed,
+          })}
         </p>
         <TaskActions
           task={current}

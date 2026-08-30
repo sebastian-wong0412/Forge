@@ -1,4 +1,5 @@
 import { API_BASE_URL, isTauriShell } from "../config";
+import { tCurrent } from "../i18n";
 import type { ApiErrorBody } from "./types";
 
 export class ApiClientError extends Error {
@@ -16,20 +17,18 @@ export class ApiClientError extends Error {
 function localizeMessage(code: string): string {
   switch (code) {
     case "not_found":
-      return "未找到该内容。";
+      return tCurrent("error.notFound");
     case "bad_request":
-      return "输入有误，请检查后重试。";
+      return tCurrent("error.badRequest");
     case "domain":
     case "conflict":
-      return "当前状态不允许此操作。";
+      return tCurrent("error.domain");
     case "persistence":
-      return "保存失败，请稍后重试。";
+      return tCurrent("error.persistence");
     case "unreachable":
-      return isTauriShell()
-        ? "无法连接到 Forge。"
-        : "无法连接到 Forge。请确认本地服务已启动。";
+      return tCurrent(isTauriShell() ? "error.unreachable" : "error.unreachableDev");
     default:
-      return "操作失败，请稍后重试。";
+      return tCurrent("error.requestFailed");
   }
 }
 

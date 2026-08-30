@@ -8,8 +8,10 @@ import { NextStep } from "../components/NextStep";
 import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { useLoad } from "../hooks/useLoad";
+import { useT } from "../i18n";
 
 export function CyclesPage() {
+  const t = useT();
   const { data, error, loading, reload } = useLoad(getCycles, []);
   const [name, setName] = useState("");
   const [startOn, setStartOn] = useState("");
@@ -30,14 +32,14 @@ export function CyclesPage() {
       setCreated(cycle);
       await reload();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "创建失败，请稍后重试。");
+      setFormError(err instanceof Error ? err.message : t("error.createFailed"));
     } finally {
       setBusy(false);
     }
   }
 
   if (loading && !data) {
-    return <LoadingState label="正在加载周期…" />;
+    return <LoadingState label={t("cycles.loading")} />;
   }
   if (error && !data) {
     return <ErrorState message={error} onRetry={() => void reload()} />;
@@ -47,32 +49,32 @@ export function CyclesPage() {
 
   return (
     <div className="stack">
-      <PageHeader kicker="规划" title="周期" meta="一段时间内工作的起点。" />
+      <PageHeader kicker={t("cycles.kicker")} title={t("cycles.title")} meta={t("cycles.meta")} />
       {cycles.length === 0 ? (
         <EmptyState
-          title="还没有周期"
-          detail="周期是 Forge 中组织一段时间工作的起点。你可以把它理解为一个阶段、季度、项目周期或个人计划。"
+          title={t("cycles.empty.title")}
+          detail={t("cycles.empty.detail")}
           action={
             <a href="#create-cycle" className="btn btn-primary">
-              创建第一个周期
+              {t("cycles.empty.action")}
             </a>
           }
         />
       ) : null}
       {cycles.length === 0 ? (
         <ul className="muted example-list">
-          <li>Q3 2026</li>
-          <li>秋季学习计划</li>
-          <li>产品上线阶段</li>
+          <li>{t("cycles.example.q3")}</li>
+          <li>{t("cycles.example.study")}</li>
+          <li>{t("cycles.example.launch")}</li>
         </ul>
       ) : null}
       {created ? (
         <NextStep
-          title="周期已创建"
-          detail="下一步：创建一个目标，明确这个周期最重要的成果。"
+          title={t("cycles.created.title")}
+          detail={t("cycles.created.detail")}
           action={
             <Link to={`/cycles/${created.id}`} className="btn btn-primary">
-              创建目标
+              {t("cycles.created.action")}
             </Link>
           }
         />
@@ -91,10 +93,10 @@ export function CyclesPage() {
         ))}
       </div>
       <form id="create-cycle" className="panel stack" onSubmit={onCreate}>
-        <h2 className="section-title">新周期</h2>
+        <h2 className="section-title">{t("cycles.form.title")}</h2>
         <div className="form-grid">
           <div className="field">
-            <label htmlFor="cycle-name">名称</label>
+            <label htmlFor="cycle-name">{t("cycles.form.name")}</label>
             <input
               id="cycle-name"
               value={name}
@@ -103,7 +105,7 @@ export function CyclesPage() {
             />
           </div>
           <div className="field">
-            <label htmlFor="cycle-start">开始</label>
+            <label htmlFor="cycle-start">{t("cycles.form.start")}</label>
             <input
               id="cycle-start"
               type="date"
@@ -113,7 +115,7 @@ export function CyclesPage() {
             />
           </div>
           <div className="field">
-            <label htmlFor="cycle-end">结束</label>
+            <label htmlFor="cycle-end">{t("cycles.form.end")}</label>
             <input
               id="cycle-end"
               type="date"
@@ -126,7 +128,7 @@ export function CyclesPage() {
         {formError ? <ErrorState message={formError} /> : null}
         <div>
           <button type="submit" className="btn btn-primary" disabled={busy}>
-            创建周期
+            {t("cycles.form.submit")}
           </button>
         </div>
       </form>

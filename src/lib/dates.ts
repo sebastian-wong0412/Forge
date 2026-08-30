@@ -1,4 +1,5 @@
 import type { IsoDate, Rfc3339 } from "../api/types";
+import { resolveLocale, type Locale } from "../i18n";
 
 export function shiftCalendarDate(date: IsoDate, days: number): IsoDate {
   const [year, month, day] = date.split("-").map(Number);
@@ -19,21 +20,35 @@ export function localCalendarDate(now = new Date()): IsoDate {
   return `${year}-${month}-${day}`;
 }
 
-export function formatCalendarDate(date: IsoDate): string {
+export function formatCalendarDate(
+  date: IsoDate,
+  locale: Locale = resolveLocale("system"),
+): string {
   const [year, month, day] = date.split("-");
   const monthIndex = Number(month) - 1;
   if (!year || monthIndex < 0 || monthIndex > 11 || !day) {
     return date;
   }
+  if (locale === "en") {
+    return new Date(Date.UTC(Number(year), monthIndex, Number(day))).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      timeZone: "UTC",
+    });
+  }
   return `${year}年${Number(month)}月${Number(day)}日`;
 }
 
-export function formatTimestamp(value: Rfc3339): string {
+export function formatTimestamp(
+  value: Rfc3339,
+  locale: Locale = resolveLocale("system"),
+): string {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
     return value;
   }
-  return parsed.toLocaleString("zh-CN", {
+  return parsed.toLocaleString(locale === "zh" ? "zh-CN" : "en-US", {
     year: "numeric",
     month: "numeric",
     day: "numeric",

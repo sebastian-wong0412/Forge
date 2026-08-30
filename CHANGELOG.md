@@ -4,6 +4,24 @@ All notable changes to Forge are documented here.
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-08-31
+
+### Added
+
+- Settings page with language, theme, About, and update check
+- Simplified Chinese and English UI, including Follow system
+- Dark mode, including Follow Windows system theme
+- Check for updates from GitHub Releases and download the Windows x64 installer
+
+### Changed
+
+- Existing UI copy now goes through a shared i18n catalog instead of hardcoded Chinese/English strings
+
+### Technical
+
+- Language and theme are stored in the Tauri app config directory, not in the SQLite business database
+- Update check uses GitHub Releases; Forge never silently overwrites the current install
+
 ## [0.2.1] — 2026-08-30
 
 ### Added

@@ -2,7 +2,7 @@
 
 > Personal execution, organized around outcomes.
 
-[![version](https://img.shields.io/badge/version-v0.2.1-1f1b14)](https://github.com/sebastian-wong0412/Forge)
+[![version](https://img.shields.io/badge/version-v0.3.0-1f1b14)](https://github.com/sebastian-wong0412/Forge)
 [![rust](https://img.shields.io/badge/rust-1.85+-dea584)](https://www.rust-lang.org/)
 [![react](https://img.shields.io/badge/ui-react%2019-61dafb)](https://react.dev/)
 [![tauri](https://img.shields.io/badge/desktop-tauri%202-24c8db)](https://tauri.app/)
@@ -15,7 +15,7 @@ Plan a cycle. Name the outcome. Break it into projects and tasks. Then open Toda
 
 Data lives in SQLite on your machine. No account. No cloud. No second source of truth.
 
-The desktop UI is Simplified Chinese. HTTP identifiers stay in English.
+The desktop UI supports Simplified Chinese and English, and can follow the Windows language and theme. HTTP identifiers stay in English.
 
 ## Core Concepts
 
@@ -44,6 +44,10 @@ Cycle
 - Flexible Key Results: numeric, percentage, milestone, qualitative
 - Parent states advance when work actually starts
 - Daily execution through scheduled tasks
+- Settings: Simplified Chinese, English, or follow the Windows language
+- Settings: default (follow Windows) or dark theme
+- About Forge, with the real app version, MIT license, and a GitHub link
+- Check GitHub Releases for a newer version and download the Windows x64 installer — Forge does not install it for you
 - Append-only progress history
 - Local-first architecture: SQLite is the source of truth
 
@@ -51,7 +55,7 @@ Cycle
 
 ### Windows
 
-Download the Windows x64 installer (`Forge_0.2.1_x64-setup.exe`) from [Releases](https://github.com/sebastian-wong0412/Forge/releases), install Forge, and open it from the Start Menu.
+Download the Windows x64 installer (`Forge_0.3.0_x64-setup.exe`) from [Releases](https://github.com/sebastian-wong0412/Forge/releases), install Forge, and open it from the Start Menu.
 
 You do not need Node, Rust, or a terminal. Forge starts its local backend automatically. Data lives in `%LOCALAPPDATA%\app.forge.desktop`.
 

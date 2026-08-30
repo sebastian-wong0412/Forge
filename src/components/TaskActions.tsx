@@ -1,4 +1,5 @@
 import type { Task } from "../api/types";
+import { useT } from "../i18n";
 
 export function TaskActions({
   task,
@@ -17,31 +18,33 @@ export function TaskActions({
   onSchedule: () => void;
   onUnschedule: () => void;
 }) {
+  const t = useT();
+
   return (
     <div className="row" onClick={(event) => event.stopPropagation()}>
       {task.status === "todo" ? (
         <button type="button" className="btn btn-primary" disabled={busy} onClick={onStart}>
-          开始
+          {t("common.start")}
         </button>
       ) : null}
       {task.status === "in_progress" ? (
         <button type="button" className="btn btn-primary" disabled={busy} onClick={onComplete}>
-          完成
+          {t("common.complete")}
         </button>
       ) : null}
       {task.status === "todo" || task.status === "in_progress" ? (
         <button type="button" className="btn btn-danger" disabled={busy} onClick={onCancel}>
-          取消
+          {t("common.cancel")}
         </button>
       ) : null}
       {task.status === "todo" || task.status === "in_progress" ? (
         <>
           <button type="button" className="btn" disabled={busy} onClick={onSchedule}>
-            {task.scheduled_on ? "改期" : "安排日期"}
+            {task.scheduled_on ? t("tasks.reschedule") : t("tasks.schedule")}
           </button>
           {task.scheduled_on ? (
             <button type="button" className="btn" disabled={busy} onClick={onUnschedule}>
-              取消安排
+              {t("tasks.unschedule")}
             </button>
           ) : null}
         </>

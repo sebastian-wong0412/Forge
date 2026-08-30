@@ -4,6 +4,7 @@ import { CycleDetailPage } from "./pages/CycleDetailPage";
 import { CyclesPage } from "./pages/CyclesPage";
 import { ObjectiveDetailPage } from "./pages/ObjectiveDetailPage";
 import { ProjectDetailPage } from "./pages/ProjectDetailPage";
+import { SettingsPage } from "./pages/SettingsPage";
 import { TaskDetailPage } from "./pages/TaskDetailPage";
 import { TodayPage } from "./pages/TodayPage";
 
@@ -18,6 +19,7 @@ export function App() {
         <Route path="/objectives/:objectiveId" element={<ObjectiveDetailPage />} />
         <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
         <Route path="/tasks/:taskId" element={<TaskDetailPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
       </Route>
     </Routes>
   );

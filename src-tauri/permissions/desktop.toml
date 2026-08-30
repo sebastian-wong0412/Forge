@@ -1,0 +1,29 @@
+[[permission]]
+identifier = "allow-load-preferences"
+description = "Load persisted language and theme preferences"
+commands.allow = ["load_preferences"]
+
+[[permission]]
+identifier = "allow-save-preferences"
+description = "Save language and theme preferences"
+commands.allow = ["save_preferences"]
+
+[[permission]]
+identifier = "allow-app-version"
+description = "Read the packaged Forge version"
+commands.allow = ["app_version"]
+
+[[permission]]
+identifier = "allow-check-for-updates"
+description = "Query GitHub Releases for a newer Forge version"
+commands.allow = ["check_for_updates"]
+
+[[permission]]
+identifier = "allow-download-installer"
+description = "Download the Windows x64 installer to the Downloads folder"
+commands.allow = ["download_installer"]
+
+[[permission]]
+identifier = "allow-open-external"
+description = "Open the GitHub project page or reveal a downloaded installer"
+commands.allow = ["open_external"]
