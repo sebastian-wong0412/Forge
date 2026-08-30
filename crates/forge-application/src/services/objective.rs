@@ -111,7 +111,13 @@ where
         now: OffsetDateTime,
     ) -> Result<Objective, AppError> {
         let mut objective = self.get(id).await?;
+        let mut cycle = crate::parent_progression::load_cycle(&self.cycles, &objective).await?;
+        let cycle_change = crate::parent_progression::ensure_cycle(&mut cycle, now)?;
         objective.activate(now)?;
+
+        if cycle_change == forge_domain::EnsureActive::Activated {
+            self.cycles.update(&cycle).await?;
+        }
         self.objectives.update(&objective).await?;
         Ok(objective)
     }
@@ -253,5 +259,76 @@ mod tests {
         objectives.activate(created.id(), NOW).await.unwrap();
         let completed = objectives.complete(created.id(), NOW).await.unwrap();
         assert!(!completed.status().allows_children());
+    }
+
+    #[tokio::test]
+    async fn activate_objective_activates_planning_cycle() {
+        let (cycles, objectives) = setup().await;
+        let cycle = cycles
+            .create(
+                CreateCycle {
+                    name: "Q1".into(),
+                    start_on: date!(2026 - 01 - 01),
+                    end_on: date!(2026 - 03 - 31),
+                },
+                NOW,
+            )
+            .await
+            .unwrap();
+        let created = objectives
+            .create(
+                cycle.id(),
+                CreateObjective {
+                    title: "Ship".into(),
+                    description: None,
+                    start_on: None,
+                    end_on: None,
+                },
+                NOW,
+            )
+            .await
+            .unwrap();
+        objectives.activate(created.id(), NOW).await.unwrap();
+        assert_eq!(
+            cycles.get(cycle.id()).await.unwrap().status(),
+            forge_domain::CycleStatus::Active
+        );
+    }
+
+    #[tokio::test]
+    async fn activate_objective_rejects_closed_cycle_without_activating() {
+        let (cycles, objectives) = setup().await;
+        let cycle = cycles
+            .create(
+                CreateCycle {
+                    name: "Q1".into(),
+                    start_on: date!(2026 - 01 - 01),
+                    end_on: date!(2026 - 03 - 31),
+                },
+                NOW,
+            )
+            .await
+            .unwrap();
+        let created = objectives
+            .create(
+                cycle.id(),
+                CreateObjective {
+                    title: "Ship".into(),
+                    description: None,
+                    start_on: None,
+                    end_on: None,
+                },
+                NOW,
+            )
+            .await
+            .unwrap();
+        cycles.activate(cycle.id(), NOW).await.unwrap();
+        cycles.close(cycle.id(), NOW).await.unwrap();
+        let err = objectives.activate(created.id(), NOW).await.unwrap_err();
+        assert!(matches!(err, AppError::Domain(_)));
+        assert_eq!(
+            objectives.get(created.id()).await.unwrap().status(),
+            forge_domain::ObjectiveStatus::Draft
+        );
     }
 }

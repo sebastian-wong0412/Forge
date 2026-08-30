@@ -14,6 +14,7 @@ import {
   getObjective,
   getProjects,
   type KeyResult,
+  type ProgressKind,
   type Project,
 } from "../api";
 import { Breadcrumbs } from "../components/Breadcrumbs";
@@ -24,6 +25,7 @@ import { LoadingState } from "../components/LoadingState";
 import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { useLoad } from "../hooks/useLoad";
+import { statusLabel } from "../lib/status";
 
 export function ObjectiveDetailPage() {
   const { objectiveId = "" } = useParams();
@@ -91,7 +93,7 @@ export function ObjectiveDetailPage() {
                 className="btn"
                 onClick={() => void run(() => activateObjective(objectiveId))}
               >
-                激活
+                开始
               </button>
             ) : null}
             {objective.data.status === "active" ? (
@@ -134,6 +136,20 @@ export function ObjectiveDetailPage() {
   );
 }
 
+function keyResultSummary(keyResult: KeyResult, percent: string | null): string {
+  if (keyResult.progress_kind === "milestone") {
+    return `${statusLabel(keyResult.current_state ?? "not_started")}${percent ? ` · ${percent}` : ""}`;
+  }
+  if (keyResult.progress_kind === "qualitative") {
+    return keyResult.latest_note ?? "还没有进展";
+  }
+  const current = keyResult.current_value ?? "—";
+  const unit = keyResult.unit ? ` ${keyResult.unit}` : "";
+  const start = keyResult.start_value ?? "—";
+  const target = keyResult.target_value !== null ? ` · ${keyResult.target_value} 目标` : "";
+  return `${current}${unit} 当前 · ${start} 起点${target}${percent ? ` · ${percent}` : ""}`;
+}
+
 function KeyResultsSection({
   objectiveId,
   keyResults,
@@ -148,6 +164,7 @@ function KeyResultsSection({
   onChanged: () => Promise<void>;
 }) {
   const [title, setTitle] = useState("");
+  const [progressKind, setProgressKind] = useState<ProgressKind>("numeric");
   const [startValue, setStartValue] = useState("0");
   const [targetValue, setTargetValue] = useState("");
   const [unit, setUnit] = useState("");
@@ -159,9 +176,18 @@ function KeyResultsSection({
     try {
       await createKeyResult(objectiveId, {
         title,
-        start_value: Number(startValue),
-        target_value: targetValue === "" ? null : Number(targetValue),
-        unit: unit || null,
+        progress_kind: progressKind,
+        start_value:
+          progressKind === "numeric" || progressKind === "percentage"
+            ? Number(startValue)
+            : null,
+        target_value:
+          progressKind === "numeric" || progressKind === "percentage"
+            ? targetValue === ""
+              ? null
+              : Number(targetValue)
+            : null,
+        unit: progressKind === "numeric" ? unit || null : null,
       });
       setTitle("");
       setStartValue("0");
@@ -179,7 +205,7 @@ function KeyResultsSection({
       {loading && keyResults.length === 0 ? <LoadingState /> : null}
       {error ? <ErrorState message={error} /> : null}
       {keyResults.length === 0 && !loading ? (
-        <EmptyState title="还没有关键结果" detail="用可衡量的结果判断目标是否正在实现。" />
+        <EmptyState title="还没有关键结果" detail="写出你希望看到的结果，不一定是数字。" />
       ) : null}
       {keyResults.map((keyResult) => (
         <KeyResultCard key={keyResult.id} keyResult={keyResult} onChanged={onChanged} />
@@ -191,30 +217,50 @@ function KeyResultsSection({
             <input id="kr-title" value={title} onChange={(event) => setTitle(event.target.value)} required />
           </div>
           <div className="field">
-            <label htmlFor="kr-start">起始值</label>
-            <input
-              id="kr-start"
-              type="number"
-              step="any"
-              value={startValue}
-              onChange={(event) => setStartValue(event.target.value)}
-              required
-            />
+            <label htmlFor="kr-kind">类型</label>
+            <select
+              id="kr-kind"
+              value={progressKind}
+              onChange={(event) => setProgressKind(event.target.value as ProgressKind)}
+            >
+              <option value="numeric">数值</option>
+              <option value="percentage">百分比</option>
+              <option value="milestone">里程碑</option>
+              <option value="qualitative">定性</option>
+            </select>
           </div>
-          <div className="field">
-            <label htmlFor="kr-target">目标值</label>
-            <input
-              id="kr-target"
-              type="number"
-              step="any"
-              value={targetValue}
-              onChange={(event) => setTargetValue(event.target.value)}
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="kr-unit">单位</label>
-            <input id="kr-unit" value={unit} onChange={(event) => setUnit(event.target.value)} />
-          </div>
+          {progressKind === "numeric" || progressKind === "percentage" ? (
+            <>
+              <div className="field">
+                <label htmlFor="kr-start">起始值</label>
+                <input
+                  id="kr-start"
+                  type="number"
+                  step="any"
+                  value={startValue}
+                  onChange={(event) => setStartValue(event.target.value)}
+                  required
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="kr-target">目标值</label>
+                <input
+                  id="kr-target"
+                  type="number"
+                  step="any"
+                  value={targetValue}
+                  onChange={(event) => setTargetValue(event.target.value)}
+                  required={progressKind === "percentage"}
+                />
+              </div>
+            </>
+          ) : null}
+          {progressKind === "numeric" ? (
+            <div className="field">
+              <label htmlFor="kr-unit">单位</label>
+              <input id="kr-unit" value={unit} onChange={(event) => setUnit(event.target.value)} />
+            </div>
+          ) : null}
         </div>
         {formError ? <ErrorState message={formError} /> : null}
         <div>
@@ -244,12 +290,7 @@ function KeyResultCard({
         <StatusBadge status={keyResult.status} />
       </div>
       {keyResult.description ? <p>{keyResult.description}</p> : null}
-      <p className="muted">
-        {keyResult.current_value}
-        {keyResult.unit ? ` ${keyResult.unit}` : ""} 当前 · {keyResult.start_value} 起点
-        {keyResult.target_value !== null ? ` · ${keyResult.target_value} 目标值` : ""}
-        {percent ? ` · ${percent}` : ""}
-      </p>
+      <p className="muted">{keyResultSummary(keyResult, percent)}</p>
       {keyResult.progress !== null ? (
         <div className="progress" aria-hidden="true">
           <span style={{ width: `${Math.min(100, Math.max(0, keyResult.progress * 100))}%` }} />
@@ -262,7 +303,7 @@ function KeyResultCard({
             className="btn"
             onClick={() => void activateKeyResult(keyResult.id).then(onChanged)}
           >
-            激活
+            开始
           </button>
         ) : null}
         {keyResult.status === "active" ? (
@@ -275,7 +316,11 @@ function KeyResultCard({
           </button>
         ) : null}
       </div>
-      <CheckInPanel keyResultId={keyResult.id} onKeyResultChanged={onChanged} />
+      <CheckInPanel
+        keyResultId={keyResult.id}
+        progressKind={keyResult.progress_kind}
+        onKeyResultChanged={onChanged}
+      />
     </article>
   );
 }
@@ -344,9 +389,9 @@ function ProjectsSection({
       {draftCreated && draftCreated.status === "draft" ? (
         <div className="panel next-step">
           <p>
-            <strong>项目已创建为草稿。</strong>
+            <strong>项目已创建。</strong>
           </p>
-          <p>激活项目后，你就可以添加任务。</p>
+          <p>可以直接添加任务。开始项目后，父级周期和目标也会进入进行中。</p>
           <div className="row">
           <button
             type="button"
@@ -359,12 +404,12 @@ function ProjectsSection({
                 })
                 .catch((err: unknown) => {
                   setFormError(
-                    err instanceof Error ? err.message : "无法激活项目，请稍后重试。",
+                    err instanceof Error ? err.message : "无法开始项目，请稍后重试。",
                   );
                 })
             }
           >
-            激活项目
+            开始项目
           </button>
           </div>
         </div>

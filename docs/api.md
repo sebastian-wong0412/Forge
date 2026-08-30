@@ -46,7 +46,7 @@ Create body: `{ "name", "start_on", "end_on" }`.
 | `POST` | `/api/v1/cycles/:cycle_id/objectives` | Parent must allow tree mutation |
 | `GET` | `/api/v1/objectives/:id` | |
 | `PATCH` | `/api/v1/objectives/:id` | Title, description, dates |
-| `POST` | `/api/v1/objectives/:id/activate` | |
+| `POST` | `/api/v1/objectives/:id/activate` | Also activates a planning Cycle |
 | `POST` | `/api/v1/objectives/:id/complete` | |
 | `POST` | `/api/v1/objectives/:id/archive` | |
 
@@ -57,19 +57,23 @@ Create body: `{ "name", "start_on", "end_on" }`.
 | `GET` | `/api/v1/objectives/:objective_id/key-results` | |
 | `POST` | `/api/v1/objectives/:objective_id/key-results` | |
 | `GET` | `/api/v1/key-results/:id` | Includes derived fields |
-| `PATCH` | `/api/v1/key-results/:id` | Title, description, start/target/unit |
+| `PATCH` | `/api/v1/key-results/:id` | Title, description, and same-kind definition fields |
 | `POST` | `/api/v1/key-results/:id/activate` | |
 | `POST` | `/api/v1/key-results/:id/complete` | Explicit; not triggered by progress |
 | `POST` | `/api/v1/key-results/:id/archive` | |
 
-Create/update accept `start_value` and optional `target_value`. They do **not** accept `current_value` as an authoritative write.
+`progress_kind` is `numeric`, `percentage`, `milestone`, or `qualitative`. It is set on create and cannot change. Omitted `progress_kind` defaults to `numeric`.
+
+Create/update do **not** accept `current_value` as an authoritative write.
 
 Response includes:
 
-- `start_value`
-- `current_value` (derived, read-only)
-- `target_value`
-- `progress` (derived, read-only, `null` when undefined)
+- `progress_kind`
+- `start_value` / `target_value` / `unit` (null when unused)
+- `current_value` (derived; null for milestone / qualitative)
+- `current_state` (milestone only)
+- `latest_note` (from the latest check-in)
+- `progress` (0–1 when computable; null for qualitative)
 
 ### Check-ins
 
@@ -80,7 +84,11 @@ Response includes:
 
 There is no PATCH or DELETE. A new value always creates a new row.
 
-Body: `{ "value", "note?", "checked_on" }`.
+Body: `{ "value?", "state?", "note?", "checked_on" }`.
+
+- numeric / percentage: `value` required; `note` optional
+- milestone: `state` required (`not_started` / `in_progress` / `achieved`); `note` optional
+- qualitative: `note` required
 
 `checked_on` is the date the progress occurred. `created_at` is when Forge stored the check-in.
 
@@ -94,7 +102,7 @@ Allowed only when the Key Result is draft or active, the Objective is not comple
 | `POST` | `/api/v1/objectives/:objective_id/projects` | |
 | `GET` | `/api/v1/projects/:id` | |
 | `PATCH` | `/api/v1/projects/:id` | Title and description |
-| `POST` | `/api/v1/projects/:id/activate` | Required before creating tasks |
+| `POST` | `/api/v1/projects/:id/activate` | Also activates a planning Cycle and draft Objective |
 | `POST` | `/api/v1/projects/:id/complete` | |
 | `POST` | `/api/v1/projects/:id/archive` | |
 
@@ -105,10 +113,10 @@ Allowed only when the Key Result is draft or active, the Objective is not comple
 | Method | Path | Notes |
 |---|---|---|
 | `GET` | `/api/v1/projects/:project_id/tasks` | |
-| `POST` | `/api/v1/projects/:project_id/tasks` | Project must be active; optional `scheduled_on` |
+| `POST` | `/api/v1/projects/:project_id/tasks` | Project must be draft or active; optional `scheduled_on` |
 | `GET` | `/api/v1/tasks/:id` | |
 | `PATCH` | `/api/v1/tasks/:id` | Title and description only; not status or `scheduled_on` |
-| `POST` | `/api/v1/tasks/:id/start` | `todo` → `in_progress` |
+| `POST` | `/api/v1/tasks/:id/start` | `todo` → `in_progress`; activates planning/draft ancestors |
 | `POST` | `/api/v1/tasks/:id/complete` | `in_progress` → `done`, sets `completed_at` |
 | `POST` | `/api/v1/tasks/:id/cancel` | `todo` or `in_progress` → `cancelled` |
 | `POST` | `/api/v1/tasks/:id/schedule` | Set or clear `scheduled_on` |

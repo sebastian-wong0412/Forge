@@ -140,7 +140,7 @@ impl ProjectStatus {
 
     #[must_use]
     pub fn allows_tasks(self) -> bool {
-        matches!(self, Self::Active)
+        matches!(self, Self::Draft | Self::Active)
     }
 }
 
@@ -264,8 +264,10 @@ mod tests {
         assert!(!CycleStatus::Closed.allows_tree_mutation());
         assert!(ObjectiveStatus::Draft.allows_children());
         assert!(!ObjectiveStatus::Completed.allows_children());
+        assert!(ProjectStatus::Draft.allows_tasks());
         assert!(ProjectStatus::Active.allows_tasks());
-        assert!(!ProjectStatus::Draft.allows_tasks());
+        assert!(!ProjectStatus::Completed.allows_tasks());
+        assert!(!ProjectStatus::Archived.allows_tasks());
         assert!(TaskStatus::Done.is_terminal());
         assert!(!TaskStatus::Todo.is_terminal());
     }

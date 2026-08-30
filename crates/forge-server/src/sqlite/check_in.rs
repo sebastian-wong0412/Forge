@@ -1,6 +1,6 @@
 use forge_application::AppError;
 use forge_application::repos::CheckInRepository;
-use forge_domain::{CheckIn, CheckInId, KeyResultId};
+use forge_domain::{CheckIn, CheckInId, KeyResultId, MilestoneState};
 use sqlx::SqlitePool;
 
 use super::convert;
@@ -20,7 +20,8 @@ impl SqliteCheckInRepository {
 struct CheckInRow {
     id: String,
     key_result_id: String,
-    value: f64,
+    value: Option<f64>,
+    milestone_state: Option<String>,
     note: Option<String>,
     checked_on: String,
     created_at: String,
@@ -29,10 +30,17 @@ struct CheckInRow {
 
 impl CheckInRow {
     fn into_entity(self) -> Result<CheckIn, AppError> {
+        let state = self
+            .milestone_state
+            .as_deref()
+            .map(str::parse::<MilestoneState>)
+            .transpose()
+            .map_err(|err| AppError::persistence(err.to_string()))?;
         Ok(CheckIn::reconstitute(
             convert::parse(&self.id)?,
             convert::parse(&self.key_result_id)?,
             self.value,
+            state,
             self.note,
             convert::date(&self.checked_on)?,
             convert::rfc3339(&self.created_at)?,
@@ -44,12 +52,13 @@ impl CheckInRow {
 impl CheckInRepository for SqliteCheckInRepository {
     async fn create(&self, check_in: &CheckIn) -> Result<(), AppError> {
         sqlx::query(
-            "INSERT INTO check_ins (id, key_result_id, value, note, checked_on, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO check_ins (id, key_result_id, value, milestone_state, note, checked_on, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         )
         .bind(check_in.id().to_string())
         .bind(check_in.key_result_id().to_string())
         .bind(check_in.value())
+        .bind(check_in.state().map(|state| state.as_str().to_string()))
         .bind(check_in.note())
         .bind(check_in.checked_on().to_string())
         .bind(convert::format_rfc3339(check_in.created_at())?)
@@ -62,7 +71,7 @@ impl CheckInRepository for SqliteCheckInRepository {
 
     async fn get(&self, id: CheckInId) -> Result<Option<CheckIn>, AppError> {
         sqlx::query_as::<_, CheckInRow>(
-            "SELECT id, key_result_id, value, note, checked_on, created_at, updated_at
+            "SELECT id, key_result_id, value, milestone_state, note, checked_on, created_at, updated_at
              FROM check_ins WHERE id = ?",
         )
         .bind(id.to_string())
@@ -78,7 +87,7 @@ impl CheckInRepository for SqliteCheckInRepository {
         key_result_id: KeyResultId,
     ) -> Result<Vec<CheckIn>, AppError> {
         sqlx::query_as::<_, CheckInRow>(
-            "SELECT id, key_result_id, value, note, checked_on, created_at, updated_at
+            "SELECT id, key_result_id, value, milestone_state, note, checked_on, created_at, updated_at
              FROM check_ins
              WHERE key_result_id = ?
              ORDER BY checked_on ASC, created_at ASC, id ASC",

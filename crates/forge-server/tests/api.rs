@@ -314,14 +314,15 @@ async fn cycle_hierarchy_checkins_and_reviews() {
     assert_eq!(project["objective_id"], objective_id);
     assert_eq!(project["status"], "draft");
 
-    let (status, _) = send(
+    let (status, draft_task) = send(
         &app,
         "POST",
         &format!("/api/v1/projects/{project_id}/tasks"),
-        Some(json!({ "title": "Too soon" })),
+        Some(json!({ "title": "Plan it" })),
     )
     .await;
-    assert_eq!(status, StatusCode::CONFLICT);
+    assert_eq!(status, StatusCode::CREATED);
+    assert_eq!(draft_task["status"], "todo");
 
     let (status, active_project) = send(
         &app,
@@ -1009,4 +1010,286 @@ async fn today_completed_uses_fixed_utc_midnight_bounds() {
     assert_eq!(status, StatusCode::OK);
     assert_eq!(task_ids(&tomorrow["completed"]), vec![after_id]);
     assert!(!task_ids(&tomorrow["completed"]).contains(&before_id));
+}
+
+async fn draft_tree(app: &axum::Router) -> (String, String, String, String) {
+    let cycle = create_cycle(app).await;
+    let cycle_id = cycle["id"].as_str().unwrap().to_string();
+    let (status, objective) = send(
+        app,
+        "POST",
+        &format!("/api/v1/cycles/{cycle_id}/objectives"),
+        Some(json!({ "title": "Ship" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED);
+    let objective_id = objective["id"].as_str().unwrap().to_string();
+    let (status, project) = send(
+        app,
+        "POST",
+        &format!("/api/v1/objectives/{objective_id}/projects"),
+        Some(json!({ "title": "Work" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED);
+    let project_id = project["id"].as_str().unwrap().to_string();
+    let task = create_task(app, &project_id, "Do it", None).await;
+    let task_id = task["id"].as_str().unwrap().to_string();
+    (cycle_id, objective_id, project_id, task_id)
+}
+
+#[tokio::test]
+async fn start_task_activates_planning_cycle_draft_objective_and_project() {
+    let (app, _dir) = setup().await;
+    let (cycle_id, objective_id, project_id, task_id) = draft_tree(&app).await;
+
+    let (status, started) = send(
+        &app,
+        "POST",
+        &format!("/api/v1/tasks/{task_id}/start"),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(started["status"], "in_progress");
+    assert_eq!(started["id"], task_id);
+
+    let (_, cycle) = send(&app, "GET", &format!("/api/v1/cycles/{cycle_id}"), None).await;
+    let (_, objective) = send(
+        &app,
+        "GET",
+        &format!("/api/v1/objectives/{objective_id}"),
+        None,
+    )
+    .await;
+    let (_, project) = send(&app, "GET", &format!("/api/v1/projects/{project_id}"), None).await;
+    assert_eq!(cycle["status"], "active");
+    assert_eq!(objective["status"], "active");
+    assert_eq!(project["status"], "active");
+}
+
+#[tokio::test]
+async fn start_task_rejects_closed_cycle_without_starting_task() {
+    let (app, _dir) = setup().await;
+    let (cycle_id, _, _, task_id) = draft_tree(&app).await;
+    let (status, _) = send(
+        &app,
+        "POST",
+        &format!("/api/v1/cycles/{cycle_id}/activate"),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let (status, _) = send(
+        &app,
+        "POST",
+        &format!("/api/v1/cycles/{cycle_id}/close"),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    let (status, body) = send(
+        &app,
+        "POST",
+        &format!("/api/v1/tasks/{task_id}/start"),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(body["error"]["code"], "domain");
+
+    let (_, task) = send(&app, "GET", &format!("/api/v1/tasks/{task_id}"), None).await;
+    assert_eq!(task["status"], "todo");
+}
+
+#[tokio::test]
+async fn activate_project_activates_objective_and_cycle() {
+    let (app, _dir) = setup().await;
+    let (cycle_id, objective_id, project_id, _) = draft_tree(&app).await;
+
+    let (status, project) = send(
+        &app,
+        "POST",
+        &format!("/api/v1/projects/{project_id}/activate"),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(project["status"], "active");
+
+    let (_, cycle) = send(&app, "GET", &format!("/api/v1/cycles/{cycle_id}"), None).await;
+    let (_, objective) = send(
+        &app,
+        "GET",
+        &format!("/api/v1/objectives/{objective_id}"),
+        None,
+    )
+    .await;
+    assert_eq!(cycle["status"], "active");
+    assert_eq!(objective["status"], "active");
+}
+
+#[tokio::test]
+async fn activate_objective_activates_planning_cycle() {
+    let (app, _dir) = setup().await;
+    let cycle = create_cycle(&app).await;
+    let cycle_id = cycle["id"].as_str().unwrap();
+    let (status, objective) = send(
+        &app,
+        "POST",
+        &format!("/api/v1/cycles/{cycle_id}/objectives"),
+        Some(json!({ "title": "Ship" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED);
+    let objective_id = objective["id"].as_str().unwrap();
+
+    let (status, _) = send(
+        &app,
+        "POST",
+        &format!("/api/v1/objectives/{objective_id}/activate"),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let (_, cycle) = send(&app, "GET", &format!("/api/v1/cycles/{cycle_id}"), None).await;
+    assert_eq!(cycle["status"], "active");
+}
+
+async fn create_objective_id(app: &axum::Router) -> String {
+    let cycle = create_cycle(app).await;
+    let cycle_id = cycle["id"].as_str().unwrap();
+    let (status, objective) = send(
+        app,
+        "POST",
+        &format!("/api/v1/cycles/{cycle_id}/objectives"),
+        Some(json!({ "title": "Ship" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED);
+    objective["id"].as_str().unwrap().to_string()
+}
+
+#[tokio::test]
+async fn key_result_progress_kinds_and_check_ins() {
+    let (app, _dir) = setup().await;
+    let objective_id = create_objective_id(&app).await;
+
+    let (status, numeric) = send(
+        &app,
+        "POST",
+        &format!("/api/v1/objectives/{objective_id}/key-results"),
+        Some(json!({
+            "title": "Revenue",
+            "progress_kind": "numeric",
+            "start_value": 0.0,
+            "target_value": 100.0,
+            "unit": "万元"
+        })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED);
+    assert_eq!(numeric["progress_kind"], "numeric");
+    assert_eq!(numeric["current_value"], 0.0);
+    assert_eq!(numeric["progress"], 0.0);
+
+    let (status, percentage) = send(
+        &app,
+        "POST",
+        &format!("/api/v1/objectives/{objective_id}/key-results"),
+        Some(json!({
+            "title": "Coverage",
+            "progress_kind": "percentage",
+            "start_value": 60.0,
+            "target_value": 90.0
+        })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED);
+    assert_eq!(percentage["progress_kind"], "percentage");
+
+    let (status, milestone) = send(
+        &app,
+        "POST",
+        &format!("/api/v1/objectives/{objective_id}/key-results"),
+        Some(json!({ "title": "Launch", "progress_kind": "milestone" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED);
+    assert_eq!(milestone["progress_kind"], "milestone");
+    assert_eq!(milestone["current_state"], "not_started");
+    assert_eq!(milestone["progress"], 0.0);
+    assert!(milestone["current_value"].is_null());
+
+    let (status, qualitative) = send(
+        &app,
+        "POST",
+        &format!("/api/v1/objectives/{objective_id}/key-results"),
+        Some(json!({ "title": "Learn", "progress_kind": "qualitative" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED);
+    assert_eq!(qualitative["progress_kind"], "qualitative");
+    assert!(qualitative["progress"].is_null());
+
+    let milestone_id = milestone["id"].as_str().unwrap();
+    let (status, check) = send(
+        &app,
+        "POST",
+        &format!("/api/v1/key-results/{milestone_id}/check-ins"),
+        Some(json!({
+            "state": "in_progress",
+            "note": "preview passed",
+            "checked_on": "2026-08-30"
+        })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED);
+    assert_eq!(check["state"], "in_progress");
+    assert!(check["value"].is_null());
+
+    let (status, updated) = send(
+        &app,
+        "GET",
+        &format!("/api/v1/key-results/{milestone_id}"),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(updated["current_state"], "in_progress");
+    assert_eq!(updated["progress"], 0.5);
+    assert_eq!(updated["latest_note"], "preview passed");
+
+    let qualitative_id = qualitative["id"].as_str().unwrap();
+    let (status, _) = send(
+        &app,
+        "POST",
+        &format!("/api/v1/key-results/{qualitative_id}/check-ins"),
+        Some(json!({ "checked_on": "2026-08-30" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+
+    let (status, note) = send(
+        &app,
+        "POST",
+        &format!("/api/v1/key-results/{qualitative_id}/check-ins"),
+        Some(json!({
+            "note": "read two papers",
+            "checked_on": "2026-08-30"
+        })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED);
+    assert_eq!(note["note"], "read two papers");
+
+    let (status, _) = send(
+        &app,
+        "POST",
+        &format!("/api/v1/key-results/{milestone_id}/check-ins"),
+        Some(json!({ "value": 1.0, "checked_on": "2026-08-30" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
 }

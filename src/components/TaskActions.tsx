@@ -37,11 +37,11 @@ export function TaskActions({
       {task.status === "todo" || task.status === "in_progress" ? (
         <>
           <button type="button" className="btn" disabled={busy} onClick={onSchedule}>
-            {task.scheduled_on ? "修改日期" : "安排日期"}
+            {task.scheduled_on ? "改期" : "安排日期"}
           </button>
           {task.scheduled_on ? (
             <button type="button" className="btn" disabled={busy} onClick={onUnschedule}>
-              取消排期
+              取消安排
             </button>
           ) : null}
         </>

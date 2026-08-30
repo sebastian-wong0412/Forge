@@ -1,10 +1,10 @@
 use time::OffsetDateTime;
 
-use crate::DomainError;
 use crate::ids::{ObjectiveId, ProjectId};
 use crate::status::ProjectStatus;
 use crate::title::Title;
 use crate::util::empty_to_none;
+use crate::{DomainError, EnsureActive};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Project {
@@ -90,6 +90,22 @@ impl Project {
         Ok(())
     }
 
+    pub fn ensure_active(&mut self, now: OffsetDateTime) -> Result<EnsureActive, DomainError> {
+        match self.status {
+            ProjectStatus::Active => Ok(EnsureActive::AlreadyActive),
+            ProjectStatus::Draft => {
+                self.activate(now)?;
+                Ok(EnsureActive::Activated)
+            }
+            ProjectStatus::Completed | ProjectStatus::Archived => {
+                Err(DomainError::InvalidStatusTransition {
+                    from: self.status.as_str(),
+                    to: ProjectStatus::Active.as_str(),
+                })
+            }
+        }
+    }
+
     pub fn complete(&mut self, now: OffsetDateTime) -> Result<(), DomainError> {
         if self.status != ProjectStatus::Active {
             return Err(DomainError::InvalidStatusTransition {
@@ -159,13 +175,43 @@ mod tests {
     const NOW: OffsetDateTime = datetime!(2026-01-15 12:00:00 UTC);
 
     #[test]
-    fn only_active_allows_tasks() {
+    fn draft_and_active_allow_tasks() {
         let mut project =
             Project::create(ObjectiveId::new(), Title::parse("Work").unwrap(), None, NOW);
-        assert!(!project.status().allows_tasks());
+        assert!(project.status().allows_tasks());
         project.activate(NOW).unwrap();
         assert!(project.status().allows_tasks());
         project.complete(NOW).unwrap();
         assert!(!project.status().allows_tasks());
+    }
+
+    #[test]
+    fn ensure_active_from_draft_and_already_active() {
+        let mut project =
+            Project::create(ObjectiveId::new(), Title::parse("Work").unwrap(), None, NOW);
+        assert_eq!(project.ensure_active(NOW).unwrap(), EnsureActive::Activated);
+        assert_eq!(project.status(), ProjectStatus::Active);
+        let before = project.updated_at();
+        assert_eq!(
+            project
+                .ensure_active(datetime!(2026-01-16 12:00:00 UTC))
+                .unwrap(),
+            EnsureActive::AlreadyActive
+        );
+        assert_eq!(project.updated_at(), before);
+    }
+
+    #[test]
+    fn ensure_active_rejects_completed_and_archived() {
+        let mut completed =
+            Project::create(ObjectiveId::new(), Title::parse("Work").unwrap(), None, NOW);
+        completed.activate(NOW).unwrap();
+        completed.complete(NOW).unwrap();
+        assert!(completed.ensure_active(NOW).is_err());
+
+        let mut archived =
+            Project::create(ObjectiveId::new(), Title::parse("Work").unwrap(), None, NOW);
+        archived.archive(NOW).unwrap();
+        assert!(archived.ensure_active(NOW).is_err());
     }
 }

@@ -8,6 +8,7 @@ pub mod repos;
 pub mod services;
 
 mod error;
+mod parent_progression;
 
 #[cfg(test)]
 mod test_support;

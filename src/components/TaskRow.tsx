@@ -36,7 +36,7 @@ export function TaskRow({
         <div className="task-title">{task.title}</div>
         <div className="task-meta">
           {projectTitle ? `${projectTitle} · ` : ""}
-          {task.scheduled_on ? `安排于 ${task.scheduled_on}` : "未排期"}
+          {task.scheduled_on ? `安排到 ${task.scheduled_on}` : "未安排"}
         </div>
       </button>
       <TaskActions

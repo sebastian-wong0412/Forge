@@ -18,4 +18,27 @@ pub enum DomainError {
     EmptyReviewContent,
     #[error("unknown status `{0}`")]
     UnknownStatus(String),
+    #[error("unknown progress kind `{0}`")]
+    UnknownProgressKind(String),
+    #[error("unknown milestone state `{0}`")]
+    UnknownMilestoneState(String),
+    #[error("invalid progress definition for {kind}: {reason}")]
+    InvalidProgressDefinition {
+        kind: &'static str,
+        reason: &'static str,
+    },
+    #[error("invalid check-in for {kind}: {reason}")]
+    InvalidCheckInPayload {
+        kind: &'static str,
+        reason: &'static str,
+    },
+    #[error("progress kind cannot be changed after creation")]
+    ProgressKindImmutable,
+}
+
+/// Result of promoting a parent into its executable status.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EnsureActive {
+    Activated,
+    AlreadyActive,
 }

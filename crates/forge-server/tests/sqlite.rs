@@ -63,6 +63,7 @@ async fn fresh_database_applies_phase_1a_schema() {
     assert!(versions.contains(&1), "0001 was not applied: {versions:?}");
     assert!(versions.contains(&2), "0002 was not applied: {versions:?}");
     assert!(versions.contains(&3), "0003 was not applied: {versions:?}");
+    assert!(versions.contains(&4), "0004 was not applied: {versions:?}");
 
     let scheduled_on_exists: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM pragma_table_info('tasks') WHERE name = 'scheduled_on'",
@@ -96,6 +97,22 @@ async fn fresh_database_applies_phase_1a_schema() {
     .await
     .unwrap();
     assert_eq!(current_value_exists, 0);
+
+    let progress_kind_exists: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM pragma_table_info('key_results') WHERE name = 'progress_kind'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(progress_kind_exists, 1);
+
+    let milestone_state_exists: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM pragma_table_info('check_ins') WHERE name = 'milestone_state'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(milestone_state_exists, 1);
 }
 
 #[tokio::test]
@@ -167,7 +184,8 @@ async fn repositories_round_trip_phase_1a_entities() {
             CreateKeyResult {
                 title: "Weight".into(),
                 description: None,
-                start_value: 500.0,
+                progress_kind: forge_domain::ProgressKind::Numeric,
+                start_value: Some(500.0),
                 target_value: Some(200.0),
                 unit: Some("kg".into()),
             },
@@ -175,13 +193,14 @@ async fn repositories_round_trip_phase_1a_entities() {
         )
         .await
         .unwrap();
-    assert_eq!(kr.current_value, 500.0);
+    assert_eq!(kr.current_value, Some(500.0));
 
     check_svc
         .create(
             kr.key_result.id(),
             CreateCheckIn {
-                value: 400.0,
+                value: Some(400.0),
+                state: None,
                 note: Some("week 1".into()),
                 checked_on: date!(2026 - 01 - 10),
             },
@@ -193,7 +212,8 @@ async fn repositories_round_trip_phase_1a_entities() {
         .create(
             kr.key_result.id(),
             CreateCheckIn {
-                value: 300.0,
+                value: Some(300.0),
+                state: None,
                 note: None,
                 checked_on: date!(2026 - 02 - 01),
             },
@@ -207,7 +227,7 @@ async fn repositories_round_trip_phase_1a_entities() {
         .unwrap();
     assert_eq!(history.len(), 2);
     let snapshot = kr_svc.get(kr.key_result.id()).await.unwrap();
-    assert_eq!(snapshot.current_value, 300.0);
+    assert_eq!(snapshot.current_value, Some(300.0));
     assert!((snapshot.progress.unwrap() - 2.0 / 3.0).abs() < 1e-9);
 
     let project = project_svc
@@ -240,7 +260,6 @@ async fn repositories_round_trip_phase_1a_entities() {
     assert_eq!(stored_task.completed_at(), done.completed_at());
     assert_eq!(stored_task.scheduled_on(), None);
 
-    cycle_svc.activate(cycle.id(), NOW).await.unwrap();
     cycle_svc.close(cycle.id(), NOW).await.unwrap();
     review_svc
         .create(
@@ -575,4 +594,75 @@ async fn today_candidates_ignore_daily_execution_rows() {
     assert_eq!(by_task.len(), 1);
     let by_date = executions.list_by_date(TODAY).await.unwrap();
     assert_eq!(by_date.len(), 1);
+}
+
+#[tokio::test]
+async fn key_result_progress_migration_preserves_numeric_rows() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("legacy.db");
+    let pool = forge_server::db::connect(&path).await.unwrap();
+
+    let migrations = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("migrations");
+    for name in [
+        "0001_initial.sql",
+        "0002_cycle_semantics.sql",
+        "0003_task_scheduling.sql",
+    ] {
+        let sql = std::fs::read_to_string(migrations.join(name)).unwrap();
+        sqlx::raw_sql(&sql).execute(&pool).await.unwrap();
+    }
+
+    sqlx::query(
+        "INSERT INTO cycles (id, name, start_on, end_on, status, created_at, updated_at)
+         VALUES ('c1', 'Q1', '2026-01-01', '2026-03-31', 'planning', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+    sqlx::query(
+        "INSERT INTO objectives (id, cycle_id, title, status, created_at, updated_at)
+         VALUES ('o1', 'c1', 'Ship', 'draft', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+    sqlx::query(
+        "INSERT INTO key_results (id, objective_id, title, status, start_value, target_value, unit, created_at, updated_at)
+         VALUES ('k1', 'o1', 'Weight', 'draft', 500.0, 200.0, 'kg', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+    sqlx::query(
+        "INSERT INTO check_ins (id, key_result_id, value, note, checked_on, created_at, updated_at)
+         VALUES ('i1', 'k1', 300.0, 'week 1', '2026-02-01', '2026-02-01T00:00:00Z', '2026-02-01T00:00:00Z')",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let sql = std::fs::read_to_string(migrations.join("0004_key_result_progress.sql")).unwrap();
+    sqlx::raw_sql(&sql).execute(&pool).await.unwrap();
+
+    let kind: String = sqlx::query_scalar("SELECT progress_kind FROM key_results WHERE id = 'k1'")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    let start: f64 = sqlx::query_scalar("SELECT start_value FROM key_results WHERE id = 'k1'")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    let value: f64 = sqlx::query_scalar("SELECT value FROM check_ins WHERE id = 'i1'")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    let state: Option<String> =
+        sqlx::query_scalar("SELECT milestone_state FROM check_ins WHERE id = 'i1'")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(kind, "numeric");
+    assert_eq!(start, 500.0);
+    assert_eq!(value, 300.0);
+    assert!(state.is_none());
 }

@@ -61,7 +61,7 @@ where
             .ok_or_else(|| AppError::not_found("project", project_id))?;
         if !project.status().allows_tasks() {
             return Err(AppError::conflict(
-                "cannot add a task unless the project is active",
+                "cannot add a task unless the project is draft or active",
             ));
         }
         let objective = self
@@ -120,7 +120,33 @@ where
 
     pub async fn start(&self, id: TaskId, now: OffsetDateTime) -> Result<Task, AppError> {
         let mut task = self.get(id).await?;
+        let mut ancestry = crate::parent_progression::load_ancestry(
+            &self.cycles,
+            &self.objectives,
+            &self.projects,
+            task.project_id(),
+        )
+        .await?;
+
+        let cycle_change = crate::parent_progression::ensure_cycle(&mut ancestry.cycle, now)?;
+        let objective_change =
+            crate::parent_progression::ensure_objective(&mut ancestry.objective, now)?;
+        let project_change = crate::parent_progression::ensure_project(&mut ancestry.project, now)?;
         task.start(now)?;
+
+        crate::parent_progression::persist_activated(
+            &self.cycles,
+            &self.objectives,
+            &self.projects,
+            crate::parent_progression::ActivatedParents {
+                cycle: &ancestry.cycle,
+                cycle_change,
+                objective: &ancestry.objective,
+                objective_change,
+                project: Some((&ancestry.project, project_change)),
+            },
+        )
+        .await?;
         self.tasks.update(&task).await?;
         Ok(task)
     }
@@ -191,7 +217,7 @@ mod tests {
     const NOW: OffsetDateTime = datetime!(2026-01-15 12:00:00 UTC);
 
     #[tokio::test]
-    async fn only_active_project_can_create_task() {
+    async fn draft_or_active_project_can_create_task() {
         let cycles = InMemoryCycleRepo::default();
         let objectives = InMemoryObjectiveRepo::default();
         let projects = InMemoryProjectRepo::default();
@@ -199,7 +225,8 @@ mod tests {
         let cycle_svc = CycleService::new(cycles.clone());
         let objective_svc = ObjectiveService::new(cycles.clone(), objectives.clone());
         let project_svc = ProjectService::new(cycles.clone(), objectives.clone(), projects.clone());
-        let task_svc = TaskService::new(cycles, objectives, projects, tasks);
+        let task_svc =
+            TaskService::new(cycles.clone(), objectives.clone(), projects.clone(), tasks);
 
         let cycle = cycle_svc
             .create(
@@ -236,20 +263,21 @@ mod tests {
             )
             .await
             .unwrap();
-        let blocked = task_svc
+        let on_draft = task_svc
             .create(
                 project.id(),
                 CreateTask {
-                    title: "Too soon".into(),
+                    title: "Plan it".into(),
                     description: None,
                     scheduled_on: None,
                 },
                 NOW,
             )
             .await
-            .unwrap_err();
-        assert!(matches!(blocked, AppError::Conflict { .. }));
+            .unwrap();
+        assert_eq!(on_draft.status(), TaskStatus::Todo);
 
+        project_svc.complete(project.id(), NOW).await.unwrap_err();
         project_svc.activate(project.id(), NOW).await.unwrap();
         let task = task_svc
             .create(
@@ -268,6 +296,21 @@ mod tests {
         let done = task_svc.complete(task.id(), NOW).await.unwrap();
         assert_eq!(done.status(), TaskStatus::Done);
         assert!(task_svc.cancel(task.id(), NOW).await.is_err());
+
+        project_svc.complete(project.id(), NOW).await.unwrap();
+        let blocked = task_svc
+            .create(
+                project.id(),
+                CreateTask {
+                    title: "Too late".into(),
+                    description: None,
+                    scheduled_on: None,
+                },
+                NOW,
+            )
+            .await
+            .unwrap_err();
+        assert!(matches!(blocked, AppError::Conflict { .. }));
     }
 
     const TODAY: Date = date!(2026 - 08 - 30);
@@ -668,5 +711,241 @@ mod tests {
         assert!(on_today.overdue.is_empty());
         assert!(on_tomorrow.scheduled.is_empty());
         assert_eq!(ids(&on_tomorrow.overdue), vec![task.id()]);
+    }
+
+    struct DraftTree {
+        cycle_svc: CycleService<InMemoryCycleRepo>,
+        objective_svc: ObjectiveService<InMemoryCycleRepo, InMemoryObjectiveRepo>,
+        project_svc: ProjectService<InMemoryCycleRepo, InMemoryObjectiveRepo, InMemoryProjectRepo>,
+        task_svc: TaskService<
+            InMemoryCycleRepo,
+            InMemoryObjectiveRepo,
+            InMemoryProjectRepo,
+            InMemoryTaskRepo,
+        >,
+        cycle_id: forge_domain::CycleId,
+        objective_id: forge_domain::ObjectiveId,
+        project_id: forge_domain::ProjectId,
+        task_id: TaskId,
+    }
+
+    async fn draft_tree() -> DraftTree {
+        let cycles = InMemoryCycleRepo::default();
+        let objectives = InMemoryObjectiveRepo::default();
+        let projects = InMemoryProjectRepo::default();
+        let tasks = InMemoryTaskRepo::default();
+        let cycle_svc = CycleService::new(cycles.clone());
+        let objective_svc = ObjectiveService::new(cycles.clone(), objectives.clone());
+        let project_svc = ProjectService::new(cycles.clone(), objectives.clone(), projects.clone());
+        let task_svc =
+            TaskService::new(cycles.clone(), objectives.clone(), projects.clone(), tasks);
+        let cycle = cycle_svc
+            .create(
+                CreateCycle {
+                    name: "Q1".into(),
+                    start_on: date!(2026 - 01 - 01),
+                    end_on: date!(2026 - 03 - 31),
+                },
+                NOW,
+            )
+            .await
+            .unwrap();
+        let objective = objective_svc
+            .create(
+                cycle.id(),
+                CreateObjective {
+                    title: "Ship".into(),
+                    description: None,
+                    start_on: None,
+                    end_on: None,
+                },
+                NOW,
+            )
+            .await
+            .unwrap();
+        let project = project_svc
+            .create(
+                objective.id(),
+                CreateProject {
+                    title: "Work".into(),
+                    description: None,
+                },
+                NOW,
+            )
+            .await
+            .unwrap();
+        let task = task_svc
+            .create(
+                project.id(),
+                CreateTask {
+                    title: "Do it".into(),
+                    description: None,
+                    scheduled_on: None,
+                },
+                NOW,
+            )
+            .await
+            .unwrap();
+        DraftTree {
+            cycle_svc,
+            objective_svc,
+            project_svc,
+            task_svc,
+            cycle_id: cycle.id(),
+            objective_id: objective.id(),
+            project_id: project.id(),
+            task_id: task.id(),
+        }
+    }
+
+    #[tokio::test]
+    async fn start_task_activates_full_parent_chain() {
+        let tree = draft_tree().await;
+        let started = tree.task_svc.start(tree.task_id, NOW).await.unwrap();
+        assert_eq!(started.status(), TaskStatus::InProgress);
+        assert_eq!(
+            tree.cycle_svc.get(tree.cycle_id).await.unwrap().status(),
+            forge_domain::CycleStatus::Active
+        );
+        assert_eq!(
+            tree.objective_svc
+                .get(tree.objective_id)
+                .await
+                .unwrap()
+                .status(),
+            forge_domain::ObjectiveStatus::Active
+        );
+        assert_eq!(
+            tree.project_svc
+                .get(tree.project_id)
+                .await
+                .unwrap()
+                .status(),
+            forge_domain::ProjectStatus::Active
+        );
+    }
+
+    #[tokio::test]
+    async fn start_task_skips_already_active_parents() {
+        let tree = draft_tree().await;
+        tree.cycle_svc.activate(tree.cycle_id, NOW).await.unwrap();
+        tree.objective_svc
+            .activate(tree.objective_id, NOW)
+            .await
+            .unwrap();
+        tree.project_svc
+            .activate(tree.project_id, NOW)
+            .await
+            .unwrap();
+        let cycle_updated = tree
+            .cycle_svc
+            .get(tree.cycle_id)
+            .await
+            .unwrap()
+            .updated_at();
+        let started = tree.task_svc.start(tree.task_id, NOW).await.unwrap();
+        assert_eq!(started.status(), TaskStatus::InProgress);
+        assert_eq!(
+            tree.cycle_svc
+                .get(tree.cycle_id)
+                .await
+                .unwrap()
+                .updated_at(),
+            cycle_updated
+        );
+    }
+
+    #[tokio::test]
+    async fn start_task_rejects_closed_cycle_without_mutating_task() {
+        let tree = draft_tree().await;
+        tree.cycle_svc.activate(tree.cycle_id, NOW).await.unwrap();
+        tree.cycle_svc.close(tree.cycle_id, NOW).await.unwrap();
+        let err = tree.task_svc.start(tree.task_id, NOW).await.unwrap_err();
+        assert!(matches!(err, AppError::Domain(_)));
+        assert_eq!(
+            tree.task_svc.get(tree.task_id).await.unwrap().status(),
+            TaskStatus::Todo
+        );
+        assert_eq!(
+            tree.project_svc
+                .get(tree.project_id)
+                .await
+                .unwrap()
+                .status(),
+            forge_domain::ProjectStatus::Draft
+        );
+        assert_eq!(
+            tree.objective_svc
+                .get(tree.objective_id)
+                .await
+                .unwrap()
+                .status(),
+            forge_domain::ObjectiveStatus::Draft
+        );
+    }
+
+    #[tokio::test]
+    async fn start_task_rejects_completed_objective_without_mutating_task() {
+        let tree = draft_tree().await;
+        tree.objective_svc
+            .activate(tree.objective_id, NOW)
+            .await
+            .unwrap();
+        tree.objective_svc
+            .complete(tree.objective_id, NOW)
+            .await
+            .unwrap();
+        let err = tree.task_svc.start(tree.task_id, NOW).await.unwrap_err();
+        assert!(matches!(err, AppError::Domain(_)));
+        assert_eq!(
+            tree.task_svc.get(tree.task_id).await.unwrap().status(),
+            TaskStatus::Todo
+        );
+        assert_eq!(
+            tree.project_svc
+                .get(tree.project_id)
+                .await
+                .unwrap()
+                .status(),
+            forge_domain::ProjectStatus::Draft
+        );
+    }
+
+    #[tokio::test]
+    async fn start_task_rejects_archived_project_without_mutating_task() {
+        let tree = draft_tree().await;
+        tree.project_svc
+            .archive(tree.project_id, NOW)
+            .await
+            .unwrap();
+        let err = tree.task_svc.start(tree.task_id, NOW).await.unwrap_err();
+        assert!(matches!(err, AppError::Domain(_)));
+        assert_eq!(
+            tree.task_svc.get(tree.task_id).await.unwrap().status(),
+            TaskStatus::Todo
+        );
+        assert_eq!(
+            tree.cycle_svc.get(tree.cycle_id).await.unwrap().status(),
+            forge_domain::CycleStatus::Planning
+        );
+    }
+
+    #[tokio::test]
+    async fn complete_and_schedule_do_not_activate_parents() {
+        let tree = draft_tree().await;
+        tree.task_svc
+            .schedule(tree.task_id, Some(TODAY), NOW)
+            .await
+            .unwrap();
+        assert_eq!(
+            tree.cycle_svc.get(tree.cycle_id).await.unwrap().status(),
+            forge_domain::CycleStatus::Planning
+        );
+        tree.task_svc.start(tree.task_id, NOW).await.unwrap();
+        tree.task_svc.complete(tree.task_id, NOW).await.unwrap();
+        assert_eq!(
+            tree.cycle_svc.get(tree.cycle_id).await.unwrap().status(),
+            forge_domain::CycleStatus::Active
+        );
     }
 }

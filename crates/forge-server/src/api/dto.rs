@@ -105,11 +105,17 @@ impl From<&Objective> for ObjectiveResponse {
     }
 }
 
+fn default_numeric_kind() -> String {
+    "numeric".into()
+}
+
 #[derive(Debug, Deserialize)]
 pub struct CreateKeyResultRequest {
     pub title: String,
     pub description: Option<String>,
-    pub start_value: f64,
+    #[serde(default = "default_numeric_kind")]
+    pub progress_kind: String,
+    pub start_value: Option<f64>,
     pub target_value: Option<f64>,
     pub unit: Option<String>,
 }
@@ -118,7 +124,7 @@ pub struct CreateKeyResultRequest {
 pub struct UpdateKeyResultRequest {
     pub title: String,
     pub description: Option<String>,
-    pub start_value: f64,
+    pub start_value: Option<f64>,
     pub target_value: Option<f64>,
     pub unit: Option<String>,
 }
@@ -130,8 +136,11 @@ pub struct KeyResultResponse {
     pub title: String,
     pub description: Option<String>,
     pub status: String,
-    pub start_value: f64,
-    pub current_value: f64,
+    pub progress_kind: String,
+    pub start_value: Option<f64>,
+    pub current_value: Option<f64>,
+    pub current_state: Option<String>,
+    pub latest_note: Option<String>,
     pub target_value: Option<f64>,
     pub progress: Option<f64>,
     pub unit: Option<String>,
@@ -150,8 +159,11 @@ impl From<&KeyResultSnapshot> for KeyResultResponse {
             title: key_result.title().as_str().to_string(),
             description: key_result.description().map(str::to_string),
             status: key_result.status().as_str().to_string(),
+            progress_kind: key_result.progress_kind().as_str().to_string(),
             start_value: key_result.start_value(),
             current_value: value.current_value,
+            current_state: value.current_state.map(|state| state.as_str().to_string()),
+            latest_note: value.latest_note.clone(),
             target_value: key_result.target_value(),
             progress: value.progress,
             unit: key_result.unit().map(str::to_string),
@@ -163,7 +175,8 @@ impl From<&KeyResultSnapshot> for KeyResultResponse {
 
 #[derive(Debug, Deserialize)]
 pub struct CreateCheckInRequest {
-    pub value: f64,
+    pub value: Option<f64>,
+    pub state: Option<String>,
     pub note: Option<String>,
     #[serde(with = "iso_date")]
     pub checked_on: Date,
@@ -173,7 +186,8 @@ pub struct CreateCheckInRequest {
 pub struct CheckInResponse {
     pub id: String,
     pub key_result_id: String,
-    pub value: f64,
+    pub value: Option<f64>,
+    pub state: Option<String>,
     pub note: Option<String>,
     #[serde(with = "iso_date")]
     pub checked_on: Date,
@@ -189,6 +203,7 @@ impl From<&CheckIn> for CheckInResponse {
             id: value.id().to_string(),
             key_result_id: value.key_result_id().to_string(),
             value: value.value(),
+            state: value.state().map(|state| state.as_str().to_string()),
             note: value.note().map(str::to_string),
             checked_on: value.checked_on(),
             created_at: value.created_at(),

@@ -4,8 +4,11 @@ use time::{Date, OffsetDateTime};
 use crate::AppError;
 use crate::repos::{CheckInRepository, CycleRepository, KeyResultRepository, ObjectiveRepository};
 
+use forge_domain::MilestoneState;
+
 pub struct CreateCheckIn {
-    pub value: f64,
+    pub value: Option<f64>,
+    pub state: Option<MilestoneState>,
     pub note: Option<String>,
     pub checked_on: Date,
 }
@@ -70,7 +73,15 @@ where
                 "cannot add a check-in to a closed or archived cycle",
             ));
         }
-        let check_in = CheckIn::create(key_result_id, cmd.value, cmd.note, cmd.checked_on, now);
+        let check_in = CheckIn::create(
+            key_result_id,
+            key_result.progress_kind(),
+            cmd.value,
+            cmd.state,
+            cmd.note,
+            cmd.checked_on,
+            now,
+        )?;
         self.check_ins.create(&check_in).await?;
         Ok(check_in)
     }
@@ -147,7 +158,8 @@ mod tests {
                 CreateKeyResult {
                     title: "KR".into(),
                     description: None,
-                    start_value: 0.0,
+                    progress_kind: forge_domain::ProgressKind::Numeric,
+                    start_value: Some(0.0),
                     target_value: Some(10.0),
                     unit: None,
                 },
@@ -161,7 +173,8 @@ mod tests {
             .create(
                 kr.key_result.id(),
                 CreateCheckIn {
-                    value: 3.0,
+                    value: Some(3.0),
+                    state: None,
                     note: None,
                     checked_on: date!(2026 - 02 - 01),
                 },
@@ -218,7 +231,8 @@ mod tests {
                 CreateKeyResult {
                     title: "KR".into(),
                     description: None,
-                    start_value: 0.0,
+                    progress_kind: forge_domain::ProgressKind::Numeric,
+                    start_value: Some(0.0),
                     target_value: Some(10.0),
                     unit: None,
                 },
@@ -230,7 +244,8 @@ mod tests {
             .create(
                 kr.key_result.id(),
                 CreateCheckIn {
-                    value: 3.0,
+                    value: Some(3.0),
+                    state: None,
                     note: None,
                     checked_on: date!(2026 - 01 - 10),
                 },
@@ -242,7 +257,8 @@ mod tests {
             .create(
                 kr.key_result.id(),
                 CreateCheckIn {
-                    value: 7.0,
+                    value: Some(7.0),
+                    state: None,
                     note: None,
                     checked_on: date!(2026 - 01 - 20),
                 },
@@ -259,7 +275,77 @@ mod tests {
         assert_eq!(history[1].id(), second.id());
         assert_eq!(
             kr_svc.get(kr.key_result.id()).await.unwrap().current_value,
-            7.0
+            Some(7.0)
         );
+    }
+
+    #[tokio::test]
+    async fn rejects_check_in_payload_that_does_not_match_kind() {
+        let cycles = InMemoryCycleRepo::default();
+        let objectives = InMemoryObjectiveRepo::default();
+        let key_results = InMemoryKeyResultRepo::default();
+        let check_ins = InMemoryCheckInRepo::default();
+        let cycle_svc = CycleService::new(cycles.clone());
+        let objective_svc = ObjectiveService::new(cycles.clone(), objectives.clone());
+        let kr_svc = KeyResultService::new(
+            cycles.clone(),
+            objectives.clone(),
+            key_results.clone(),
+            check_ins.clone(),
+        );
+        let check_svc = CheckInService::new(cycles, objectives, key_results, check_ins);
+        let cycle = cycle_svc
+            .create(
+                CreateCycle {
+                    name: "Q1".into(),
+                    start_on: date!(2026 - 01 - 01),
+                    end_on: date!(2026 - 03 - 31),
+                },
+                NOW,
+            )
+            .await
+            .unwrap();
+        let objective = objective_svc
+            .create(
+                cycle.id(),
+                CreateObjective {
+                    title: "Ship".into(),
+                    description: None,
+                    start_on: None,
+                    end_on: None,
+                },
+                NOW,
+            )
+            .await
+            .unwrap();
+        let kr = kr_svc
+            .create(
+                objective.id(),
+                CreateKeyResult {
+                    title: "Launch".into(),
+                    description: None,
+                    progress_kind: forge_domain::ProgressKind::Milestone,
+                    start_value: None,
+                    target_value: None,
+                    unit: None,
+                },
+                NOW,
+            )
+            .await
+            .unwrap();
+        let err = check_svc
+            .create(
+                kr.key_result.id(),
+                CreateCheckIn {
+                    value: Some(1.0),
+                    state: None,
+                    note: None,
+                    checked_on: date!(2026 - 02 - 01),
+                },
+                NOW,
+            )
+            .await
+            .unwrap_err();
+        assert!(matches!(err, AppError::Domain(_)));
     }
 }

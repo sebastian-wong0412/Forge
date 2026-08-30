@@ -1,10 +1,10 @@
 use time::{Date, OffsetDateTime};
 
-use crate::DomainError;
 use crate::ids::CycleId;
 use crate::status::CycleStatus;
 use crate::title::Title;
 use crate::util::require_date_range;
+use crate::{DomainError, EnsureActive};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Cycle {
@@ -88,6 +88,22 @@ impl Cycle {
         self.status = CycleStatus::Active;
         self.updated_at = now;
         Ok(())
+    }
+
+    pub fn ensure_active(&mut self, now: OffsetDateTime) -> Result<EnsureActive, DomainError> {
+        match self.status {
+            CycleStatus::Active => Ok(EnsureActive::AlreadyActive),
+            CycleStatus::Planning => {
+                self.activate(now)?;
+                Ok(EnsureActive::Activated)
+            }
+            CycleStatus::Closed | CycleStatus::Archived => {
+                Err(DomainError::InvalidStatusTransition {
+                    from: self.status.as_str(),
+                    to: CycleStatus::Active.as_str(),
+                })
+            }
+        }
     }
 
     pub fn close(&mut self, now: OffsetDateTime) -> Result<(), DomainError> {
@@ -212,5 +228,39 @@ mod tests {
         assert_eq!(cycle.status(), CycleStatus::Archived);
         assert!(cycle.archive(NOW).is_err());
         assert!(cycle.activate(NOW).is_err());
+    }
+
+    #[test]
+    fn ensure_active_from_planning() {
+        let mut cycle = cycle();
+        assert_eq!(cycle.ensure_active(NOW).unwrap(), EnsureActive::Activated);
+        assert_eq!(cycle.status(), CycleStatus::Active);
+    }
+
+    #[test]
+    fn ensure_active_is_idempotent_when_already_active() {
+        let mut cycle = cycle();
+        cycle.activate(NOW).unwrap();
+        let before = cycle.updated_at();
+        assert_eq!(
+            cycle
+                .ensure_active(datetime!(2026-01-16 12:00:00 UTC))
+                .unwrap(),
+            EnsureActive::AlreadyActive
+        );
+        assert_eq!(cycle.status(), CycleStatus::Active);
+        assert_eq!(cycle.updated_at(), before);
+    }
+
+    #[test]
+    fn ensure_active_rejects_closed_and_archived() {
+        let mut closed = cycle();
+        closed.activate(NOW).unwrap();
+        closed.close(NOW).unwrap();
+        assert!(closed.ensure_active(NOW).is_err());
+
+        let mut archived = cycle();
+        archived.archive(NOW).unwrap();
+        assert!(archived.ensure_active(NOW).is_err());
     }
 }

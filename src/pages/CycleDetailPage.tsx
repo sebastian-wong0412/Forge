@@ -74,7 +74,7 @@ export function CycleDetailPage() {
           <>
             {cycle.data.status === "planning" ? (
               <button type="button" className="btn" onClick={() => void run(() => activateCycle(cycleId))}>
-                激活
+                开始
               </button>
             ) : null}
             {cycle.data.status === "active" ? (

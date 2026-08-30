@@ -1,13 +1,16 @@
 use time::{Date, OffsetDateTime};
 
+use crate::DomainError;
 use crate::ids::{CheckInId, KeyResultId};
+use crate::progress::{MilestoneState, ProgressKind};
 use crate::util::empty_to_none;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CheckIn {
     id: CheckInId,
     key_result_id: KeyResultId,
-    value: f64,
+    value: Option<f64>,
+    state: Option<MilestoneState>,
     note: Option<String>,
     checked_on: Date,
     created_at: OffsetDateTime,
@@ -15,30 +18,79 @@ pub struct CheckIn {
 }
 
 impl CheckIn {
-    #[must_use]
     pub fn create(
         key_result_id: KeyResultId,
-        value: f64,
+        kind: ProgressKind,
+        value: Option<f64>,
+        state: Option<MilestoneState>,
         note: Option<String>,
         checked_on: Date,
         now: OffsetDateTime,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, DomainError> {
+        let note = empty_to_none(note);
+        match kind {
+            ProgressKind::Numeric | ProgressKind::Percentage => {
+                if value.is_none() {
+                    return Err(DomainError::InvalidCheckInPayload {
+                        kind: kind.as_str(),
+                        reason: "value is required",
+                    });
+                }
+                if state.is_some() {
+                    return Err(DomainError::InvalidCheckInPayload {
+                        kind: kind.as_str(),
+                        reason: "state is not used",
+                    });
+                }
+            }
+            ProgressKind::Milestone => {
+                if state.is_none() {
+                    return Err(DomainError::InvalidCheckInPayload {
+                        kind: kind.as_str(),
+                        reason: "state is required",
+                    });
+                }
+                if value.is_some() {
+                    return Err(DomainError::InvalidCheckInPayload {
+                        kind: kind.as_str(),
+                        reason: "value is not used",
+                    });
+                }
+            }
+            ProgressKind::Qualitative => {
+                if note.is_none() {
+                    return Err(DomainError::InvalidCheckInPayload {
+                        kind: kind.as_str(),
+                        reason: "note is required",
+                    });
+                }
+                if value.is_some() || state.is_some() {
+                    return Err(DomainError::InvalidCheckInPayload {
+                        kind: kind.as_str(),
+                        reason: "value and state are not used",
+                    });
+                }
+            }
+        }
+        Ok(Self {
             id: CheckInId::new(),
             key_result_id,
             value,
-            note: empty_to_none(note),
+            state,
+            note,
             checked_on,
             created_at: now,
             updated_at: now,
-        }
+        })
     }
 
     #[must_use]
+    #[allow(clippy::too_many_arguments)]
     pub fn reconstitute(
         id: CheckInId,
         key_result_id: KeyResultId,
-        value: f64,
+        value: Option<f64>,
+        state: Option<MilestoneState>,
         note: Option<String>,
         checked_on: Date,
         created_at: OffsetDateTime,
@@ -48,6 +100,7 @@ impl CheckIn {
             id,
             key_result_id,
             value,
+            state,
             note,
             checked_on,
             created_at,
@@ -66,8 +119,13 @@ impl CheckIn {
     }
 
     #[must_use]
-    pub fn value(&self) -> f64 {
+    pub fn value(&self) -> Option<f64> {
         self.value
+    }
+
+    #[must_use]
+    pub fn state(&self) -> Option<MilestoneState> {
+        self.state
     }
 
     #[must_use]
@@ -107,6 +165,7 @@ mod tests {
     use time::macros::{date, datetime};
 
     use super::*;
+    use crate::progress::ProgressKind;
 
     #[test]
     fn latest_prefers_checked_on_then_created_at() {
@@ -114,7 +173,8 @@ mod tests {
         let early = CheckIn::reconstitute(
             CheckInId::new(),
             kr,
-            10.0,
+            Some(10.0),
+            None,
             None,
             date!(2026 - 01 - 10),
             datetime!(2026-01-20 12:00:00 UTC),
@@ -123,7 +183,8 @@ mod tests {
         let same_day_first = CheckIn::reconstitute(
             CheckInId::new(),
             kr,
-            20.0,
+            Some(20.0),
+            None,
             None,
             date!(2026 - 01 - 15),
             datetime!(2026-01-15 09:00:00 UTC),
@@ -132,7 +193,8 @@ mod tests {
         let same_day_later = CheckIn::reconstitute(
             CheckInId::new(),
             kr,
-            30.0,
+            Some(30.0),
+            None,
             None,
             date!(2026 - 01 - 15),
             datetime!(2026-01-15 18:00:00 UTC),
@@ -140,6 +202,65 @@ mod tests {
         );
         let items = [early, same_day_first, same_day_later];
         let latest = latest_check_in(&items).unwrap();
-        assert_eq!(latest.value(), 30.0);
+        assert_eq!(latest.value(), Some(30.0));
+    }
+
+    #[test]
+    fn qualitative_requires_note() {
+        let err = CheckIn::create(
+            KeyResultId::new(),
+            ProgressKind::Qualitative,
+            None,
+            None,
+            None,
+            date!(2026 - 01 - 10),
+            datetime!(2026-01-15 12:00:00 UTC),
+        )
+        .unwrap_err();
+        assert!(matches!(err, DomainError::InvalidCheckInPayload { .. }));
+    }
+
+    #[test]
+    fn numeric_allows_value_and_note() {
+        let check = CheckIn::create(
+            KeyResultId::new(),
+            ProgressKind::Numeric,
+            Some(3.0),
+            None,
+            Some("week 1".into()),
+            date!(2026 - 01 - 10),
+            datetime!(2026-01-15 12:00:00 UTC),
+        )
+        .unwrap();
+        assert_eq!(check.value(), Some(3.0));
+        assert_eq!(check.note(), Some("week 1"));
+    }
+
+    #[test]
+    fn mismatched_payload_is_rejected() {
+        assert!(
+            CheckIn::create(
+                KeyResultId::new(),
+                ProgressKind::Milestone,
+                Some(1.0),
+                Some(MilestoneState::InProgress),
+                None,
+                date!(2026 - 01 - 10),
+                datetime!(2026-01-15 12:00:00 UTC),
+            )
+            .is_err()
+        );
+        assert!(
+            CheckIn::create(
+                KeyResultId::new(),
+                ProgressKind::Numeric,
+                None,
+                None,
+                Some("note".into()),
+                date!(2026 - 01 - 10),
+                datetime!(2026-01-15 12:00:00 UTC),
+            )
+            .is_err()
+        );
     }
 }

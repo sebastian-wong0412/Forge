@@ -58,7 +58,7 @@ test("renders backend buckets without recalculating membership", () => {
 
   expect(screen.getByText("今日计划")).toBeInTheDocument();
   expect(screen.getByText("已逾期")).toBeInTheDocument();
-  expect(screen.getByText("未排期进行中")).toBeInTheDocument();
+  expect(screen.getByText("进行中（未安排）")).toBeInTheDocument();
   expect(screen.getByText("今日完成")).toBeInTheDocument();
   expect(screen.getByText("Scheduled work")).toBeInTheDocument();
   expect(screen.getByText("Overdue work")).toBeInTheDocument();
@@ -74,7 +74,7 @@ test("hides empty Today sections", () => {
   );
   expect(screen.getByText("今日计划")).toBeInTheDocument();
   expect(screen.queryByText("已逾期")).not.toBeInTheDocument();
-  expect(screen.queryByText("未排期进行中")).not.toBeInTheDocument();
+  expect(screen.queryByText("进行中（未安排）")).not.toBeInTheDocument();
   expect(screen.queryByText("今日完成")).not.toBeInTheDocument();
 });
 
@@ -84,7 +84,7 @@ test("renders scheduled_on as a calendar date string", () => {
       scheduled: [task({ title: "Dated task", scheduled_on: "2026-08-30" })],
     }),
   );
-  expect(screen.getByText("安排于 2026-08-30")).toBeInTheDocument();
+  expect(screen.getByText("安排到 2026-08-30")).toBeInTheDocument();
 });
 
 test("shows an empty Today state with a Cycles CTA", () => {

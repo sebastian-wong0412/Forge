@@ -56,7 +56,8 @@ export function ProjectDetailPage() {
     return <ErrorState message="未找到该项目。" />;
   }
 
-  const canCreateTask = project.data.status === "active";
+  const canCreateTask =
+    project.data.status === "draft" || project.data.status === "active";
 
   return (
     <div className="stack">
@@ -87,7 +88,7 @@ export function ProjectDetailPage() {
                 className="btn"
                 onClick={() => void run(() => activateProject(projectId))}
               >
-                激活
+                开始
               </button>
             ) : null}
             {project.data.status === "active" ? (
@@ -215,7 +216,7 @@ function CreateTaskForm({
         </div>
       </div>
       {disabled ? (
-        <p className="muted">请先激活项目，然后才能添加任务。</p>
+        <p className="muted">已结束或已归档的项目不能添加任务。</p>
       ) : null}
       {error ? <ErrorState message={error} /> : null}
       <div>

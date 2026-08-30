@@ -12,6 +12,7 @@ mod error;
 mod ids;
 mod key_result;
 mod objective;
+mod progress;
 mod project;
 mod review;
 mod status;
@@ -22,12 +23,13 @@ mod util;
 pub use check_in::{CheckIn, latest_check_in};
 pub use cycle::Cycle;
 pub use daily_execution::DailyExecution;
-pub use error::DomainError;
+pub use error::{DomainError, EnsureActive};
 pub use ids::{
     CheckInId, CycleId, DailyExecutionId, KeyResultId, ObjectiveId, ProjectId, ReviewId, TaskId,
 };
 pub use key_result::{KeyResult, progress};
 pub use objective::Objective;
+pub use progress::{MilestoneState, ProgressDefinition, ProgressKind};
 pub use project::Project;
 pub use review::Review;
 pub use status::{

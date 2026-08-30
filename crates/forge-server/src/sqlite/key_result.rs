@@ -1,6 +1,6 @@
 use forge_application::AppError;
 use forge_application::repos::KeyResultRepository;
-use forge_domain::{KeyResult, KeyResultId, ObjectiveId};
+use forge_domain::{KeyResult, KeyResultId, ObjectiveId, ProgressDefinition, ProgressKind};
 use sqlx::SqlitePool;
 
 use super::convert;
@@ -23,7 +23,8 @@ struct KeyResultRow {
     title: String,
     description: Option<String>,
     status: String,
-    start_value: f64,
+    progress_kind: String,
+    start_value: Option<f64>,
     target_value: Option<f64>,
     unit: Option<String>,
     created_at: String,
@@ -32,15 +33,17 @@ struct KeyResultRow {
 
 impl KeyResultRow {
     fn into_entity(self) -> Result<KeyResult, AppError> {
+        let kind: ProgressKind = convert::parse(&self.progress_kind)?;
+        let definition =
+            ProgressDefinition::parse(kind, self.start_value, self.target_value, self.unit)
+                .map_err(|err| AppError::persistence(err.to_string()))?;
         Ok(KeyResult::reconstitute(
             convert::parse(&self.id)?,
             convert::parse(&self.objective_id)?,
             convert::title(&self.title)?,
             self.description,
             convert::parse(&self.status)?,
-            self.start_value,
-            self.target_value,
-            self.unit,
+            definition,
             convert::rfc3339(&self.created_at)?,
             convert::rfc3339(&self.updated_at)?,
         ))
@@ -51,14 +54,15 @@ impl KeyResultRepository for SqliteKeyResultRepository {
     async fn create(&self, key_result: &KeyResult) -> Result<(), AppError> {
         sqlx::query(
             "INSERT INTO key_results
-                (id, objective_id, title, description, status, start_value, target_value, unit, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (id, objective_id, title, description, status, progress_kind, start_value, target_value, unit, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
         .bind(key_result.id().to_string())
         .bind(key_result.objective_id().to_string())
         .bind(key_result.title().as_str())
         .bind(key_result.description())
         .bind(key_result.status().as_str())
+        .bind(key_result.progress_kind().as_str())
         .bind(key_result.start_value())
         .bind(key_result.target_value())
         .bind(key_result.unit())
@@ -72,7 +76,7 @@ impl KeyResultRepository for SqliteKeyResultRepository {
 
     async fn get(&self, id: KeyResultId) -> Result<Option<KeyResult>, AppError> {
         sqlx::query_as::<_, KeyResultRow>(
-            "SELECT id, objective_id, title, description, status, start_value, target_value, unit, created_at, updated_at
+            "SELECT id, objective_id, title, description, status, progress_kind, start_value, target_value, unit, created_at, updated_at
              FROM key_results WHERE id = ?",
         )
         .bind(id.to_string())
@@ -88,7 +92,7 @@ impl KeyResultRepository for SqliteKeyResultRepository {
         objective_id: ObjectiveId,
     ) -> Result<Vec<KeyResult>, AppError> {
         sqlx::query_as::<_, KeyResultRow>(
-            "SELECT id, objective_id, title, description, status, start_value, target_value, unit, created_at, updated_at
+            "SELECT id, objective_id, title, description, status, progress_kind, start_value, target_value, unit, created_at, updated_at
              FROM key_results
              WHERE objective_id = ?
              ORDER BY created_at ASC, id ASC",
@@ -105,12 +109,13 @@ impl KeyResultRepository for SqliteKeyResultRepository {
     async fn update(&self, key_result: &KeyResult) -> Result<(), AppError> {
         let result = sqlx::query(
             "UPDATE key_results
-             SET title = ?, description = ?, status = ?, start_value = ?, target_value = ?, unit = ?, updated_at = ?
+             SET title = ?, description = ?, status = ?, progress_kind = ?, start_value = ?, target_value = ?, unit = ?, updated_at = ?
              WHERE id = ?",
         )
         .bind(key_result.title().as_str())
         .bind(key_result.description())
         .bind(key_result.status().as_str())
+        .bind(key_result.progress_kind().as_str())
         .bind(key_result.start_value())
         .bind(key_result.target_value())
         .bind(key_result.unit())

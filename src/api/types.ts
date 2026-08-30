@@ -36,14 +36,20 @@ export interface Objective {
   updated_at: Rfc3339;
 }
 
+export type ProgressKind = "numeric" | "percentage" | "milestone" | "qualitative";
+export type MilestoneState = "not_started" | "in_progress" | "achieved";
+
 export interface KeyResult {
   id: string;
   objective_id: string;
   title: string;
   description: string | null;
   status: KeyResultStatus;
-  start_value: number;
-  current_value: number;
+  progress_kind: ProgressKind;
+  start_value: number | null;
+  current_value: number | null;
+  current_state: MilestoneState | null;
+  latest_note: string | null;
   target_value: number | null;
   progress: number | null;
   unit: string | null;
@@ -54,7 +60,8 @@ export interface KeyResult {
 export interface CheckIn {
   id: string;
   key_result_id: string;
-  value: number;
+  value: number | null;
+  state: MilestoneState | null;
   note: string | null;
   checked_on: IsoDate;
   created_at: Rfc3339;
@@ -117,13 +124,15 @@ export interface CreateObjectiveInput {
 export interface CreateKeyResultInput {
   title: string;
   description?: string | null;
-  start_value: number;
+  progress_kind: ProgressKind;
+  start_value?: number | null;
   target_value?: number | null;
   unit?: string | null;
 }
 
 export interface CreateCheckInInput {
-  value: number;
+  value?: number | null;
+  state?: MilestoneState | null;
   note?: string | null;
   checked_on: IsoDate;
 }

@@ -1,198 +1,62 @@
 # Forge
 
-**v0.1.0** — a local-first personal execution system.
+> Personal execution, organized around outcomes.
 
-[![version](https://img.shields.io/badge/version-v0.1.0-1f1b14)](https://github.com/sebastian-wong0412/Forge)
+[![version](https://img.shields.io/badge/version-v0.2.0-1f1b14)](https://github.com/sebastian-wong0412/Forge)
 [![rust](https://img.shields.io/badge/rust-1.85+-dea584)](https://www.rust-lang.org/)
 [![react](https://img.shields.io/badge/ui-react%2019-61dafb)](https://react.dev/)
 [![tauri](https://img.shields.io/badge/desktop-tauri%202-24c8db)](https://tauri.app/)
 [![sqlite](https://img.shields.io/badge/data-sqlite-003b57)](https://sqlite.org/)
+[![license](https://img.shields.io/badge/license-MIT-3c3c3c)](./LICENSE)
 
-You plan a cycle. You name the outcome. You break it into work you can start.
-Then you choose what belongs to today — and only that work shows up.
+Forge is a local-first personal execution system for turning a season of intent into a day of work.
 
-```
-Cycle → Objective → Key Result / Project → Task → Today
-```
+Plan a cycle. Name the outcome. Break it into projects and tasks. Then open Today — only the work you chose for that day is there.
 
-Forge is not a dump of every open item. It is a local system for turning a
-season of intent into a day of execution. Data lives in SQLite on your machine.
-There is no account, no cloud, and no second source of truth.
+Data lives in SQLite on your machine. No account. No cloud. No second source of truth.
 
-The desktop UI is Simplified Chinese. The HTTP contract and this document use
-English identifiers (`Cycle`, `Task`, `scheduled_on`).
+The desktop UI is Simplified Chinese. HTTP identifiers stay in English.
 
----
-
-## Why this is not a todo list
-
-A todo app stores items. A calendar stores time. A habit tracker stores streaks.
-
-Forge stores a hierarchy with rules:
-
-- Work belongs to a **Cycle** with real dates.
-- Outcomes live on **Objectives**, not on a flat inbox.
-- Progress is measured with **Key Results** and append-only **Check-ins**.
-- Execution is organized as **Projects** and **Tasks**.
-- **Today** is a projection of tasks you scheduled — not another list you maintain by hand.
-
-If you want a bucket for everything you might do someday, this is the wrong tool.
-If you want to decide what a quarter is for, then work that plan day by day, this is the shape.
-
----
-
-## Mental model
+## Core Concepts
 
 ```
 Cycle
- ├── Objective
- │    ├── Key Result ── Check-in
- │    └── Project ── Task
- └── Review
+ └── Objective
+      ├── Key Result
+      └── Project
+           └── Task
+                └── Today
 ```
 
-```mermaid
-flowchart TD
-  C[Cycle] --> O[Objective]
-  C --> R[Review]
-  O --> KR[Key Result]
-  O --> P[Project]
-  KR --> CI[Check-in]
-  P --> T[Task]
-  T --> TD[Today]
-```
+**Cycle** is a bounded stretch of time — a quarter, a launch window, a personal sprint.
 
-**Cycle** is the planning root. It has a required start and end date. Treat it as
-a season, a quarter, a launch window, or a personal sprint — not as a long-term
-vision. Vision is a different layer and is not implemented.
+**Objective** is the result you want inside that cycle.
 
-**Objective** is the result you want inside that cycle. Optional dates, when set,
-must stay inside the parent cycle.
+**Key Result** is how you know the objective is moving. It can be a number, a percentage, a milestone, or a written outcome.
 
-**Key Result** is how you know the objective is moving. It stores a start value
-and an optional target. `current_value` and `progress` are derived from check-ins.
-They are not fields you PATCH.
+**Project** is a bundle of work. **Task** is what you actually start and finish.
 
-**Check-in** is an immutable measurement. You append a value, a date, and an
-optional note. There is no edit and no delete.
+**Today** is a projection of tasks you scheduled. It is not another list you maintain by hand.
 
-**Project** is a bundle of work that serves an objective. It is a sibling of Key
-Result, not a child of it. A project is created as **draft**. You activate it
-before you can add tasks.
+## Features
 
-**Task** is the unit you actually start and finish. Lifecycle is explicit:
+- Outcome-oriented planning, not a dump of every open item
+- Flexible Key Results: numeric, percentage, milestone, qualitative
+- Parent states advance when work actually starts
+- Daily execution through scheduled tasks
+- Append-only progress history
+- Local-first architecture: SQLite is the source of truth
 
-```
-todo → in_progress → done
-todo / in_progress → cancelled
-```
+## Quick Start
 
-Done and cancelled are terminal. Scheduling is a separate action from status.
+There is no installer yet. Run from source.
 
-**Review** belongs to the cycle. It is a written look back. Closed cycles can
-still receive reviews; they cannot gain new objectives or tasks.
+Prerequisites: Rust stable, Node.js 22+, npm.
 
-**DailyExecution** is leftover Phase 0 storage. It is not Today. Do not write to
-it for daily work.
-
----
-
-## Today
-
-Today is not another task list.
-
-It is a projection of the work you have already chosen to execute on a
-particular calendar day.
-
-```
-Task.scheduled_on
-        ↓
-      Today
-```
-
-`GET /api/v1/today?date=YYYY-MM-DD` is mandatory. The server does not guess
-"today" from the clock. The desktop client sends the browser's local calendar
-date, and you can move to the previous or next day.
-
-Four exclusive buckets come from the backend. The UI renders them; it does not
-recompute membership.
-
-| Section | Meaning |
-|---|---|
-| Scheduled | `scheduled_on` is the requested date, and the task is still active |
-| Overdue | `scheduled_on` is earlier, and the task is still active |
-| Unscheduled in progress | `in_progress` with no schedule |
-| Completed | `done`, and `completed_at` falls on that date in UTC |
-
-`scheduled_on` is the day you intend to work on the task. It is not a deadline
-and not a timestamp.
-
-**DailyExecution does not power Today.** Completing a task does not write a
-DailyExecution row. A leftover DailyExecution row does not make a task appear
-on Today.
-
-Known limitation: completed membership uses the UTC calendar date of
-`completed_at`. There is no timezone setting. Change the queried date if a
-late-night completion landed on the previous UTC day.
-
----
-
-## Getting started
-
-The first question is not "how do I start the server?"
-It is: **what do I create first?**
-
-1. Start Forge (backend, then the desktop window).
-2. Create a **Cycle**.
-3. Create an **Objective**.
-4. Add a **Key Result** and/or a **Project**.
-5. **Activate** the project. Draft projects cannot hold tasks.
-6. Create **Tasks**. Optionally schedule one while creating it.
-7. Open **Today**. Start the work. Complete it.
-8. Append **Check-ins** on the key result as the number moves.
-9. Write a **Review** when the cycle deserves one.
-
-Empty Today, with no cycles, opens on "开始使用 Forge" and sends you to create
-the first cycle. After that, each empty screen explains only the next layer.
-
-### A minimal example
-
-```
-Cycle
-  Q3 2026
-  2026-07-01 → 2026-09-30
-
-Objective
-  Improve technical depth
-
-Key Result
-  Complete 3 major technical projects
-  start 0 → target 3
-
-Project
-  Forge          ← activate this before adding tasks
-
-Task
-  Implement Today view
-  scheduled_on = 2026-08-30
-```
-
-Then open Today for `2026-08-30`, start the task, finish it, and check in `1`
-on the key result.
-
----
-
-## Run it
-
-There is no published installer in this repository. You run from source.
-
-Prerequisites: Rust stable (see `rust-toolchain.toml`), Node.js 22+, npm.
-SQLite is bundled through SQLx. You do not need a system SQLite install.
-
-**The desktop window does not start the backend.** Open two terminals.
+The desktop window does not start the backend. Use two terminals:
 
 ```bash
-# Terminal 1 — API (required)
+# Terminal 1 — API
 cargo run -p forge-server
 
 # Terminal 2 — desktop
@@ -200,39 +64,25 @@ npm install
 npm run tauri dev
 ```
 
-Or use the Vite UI in a browser:
+Or open the UI in a browser:
 
 ```bash
 npm run dev
 ```
-
-Defaults:
 
 | Surface | Address |
 |---|---|
 | API | `http://127.0.0.1:8080` |
 | Vite | `http://localhost:1420` |
 
-Override the client API with `VITE_API_BASE_URL`.
-
-| Variable | Default | Role |
-|---|---|---|
-| `FORGE_DATABASE_PATH` | `forge.db` | SQLite file |
-| `FORGE_BIND_ADDR` | `127.0.0.1:8080` | HTTP bind |
-| `FORGE_LOG_LEVEL` | `info` | Used when `RUST_LOG` is unset |
-| `RUST_LOG` | — | Wins over `FORGE_LOG_LEVEL` |
-| `VITE_API_BASE_URL` | `http://127.0.0.1:8080` | Frontend API base |
-
-Optional `.env` in the working directory is loaded by the server.
-
----
-
 ## Architecture
 
 ```
 React / TypeScript
-        ↓  HTTP
-   forge-server (Axum)
+        ↓
+      Tauri
+        ↓
+   Rust HTTP API
         ↓
    Application
         ↓
@@ -241,166 +91,12 @@ React / TypeScript
      SQLite
 ```
 
-```
-Tauri 2
- └── desktop window
-       ↓
-    web frontend
-       ↓
-   local HTTP API
-       ↓
-   forge-server
-```
+The backend is authoritative. The desktop client is a view.
 
-| Layer | Lives in | May depend on |
-|---|---|---|
-| Domain | `crates/forge-domain` | `thiserror`, `time`, `uuid` |
-| Application | `crates/forge-application` | domain only |
-| Server | `crates/forge-server` | application + domain + SQLite / Axum |
-| UI | `src/` | HTTP. No SQLite. |
-| Shell | `src-tauri/` | Tauri only |
+More detail: [docs/architecture.md](docs/architecture.md) · [docs/api.md](docs/api.md) · [docs/database.md](docs/database.md)
 
-`src-tauri` is its own Cargo project. It is excluded from the Forge workspace.
-**Tauri does not contain a second domain.** It opens a window. The server
-remains independently runnable as `cargo run -p forge-server`.
+## License
 
-The backend is authoritative. Lifecycle, date containment, Today buckets, and
-derived KR values are enforced there. The client maps those results into UI.
+[MIT](./LICENSE)
 
-IDs are UUID v7. Instants are UTC (`created_at`, `updated_at`, `completed_at`)
-and appear as RFC3339 on the wire. Calendar dates (`YYYY-MM-DD`) are used for
-cycle bounds, `scheduled_on`, `checked_on`, and Today. Those are dates, not
-timestamps.
-
----
-
-## Design principles
-
-These are visible in the code, not slogans for a future product.
-
-**Explicit lifecycle.** Status changes are named operations (`activate`,
-`start`, `complete`, `schedule`). Generic `PATCH` does not accept `status` or
-`scheduled_on`.
-
-**Derived state.** A Key Result's current value is the latest check-in, or the
-start value if none exist. Progress is computed. Reaching `1.0` does not
-auto-complete the key result.
-
-**Append-only progress.** Check-ins accumulate. History is not rewritten.
-
-**Calendar dates are not instants.** `scheduled_on` is a day. `completed_at`
-is a moment. Mixing them is how Today completed-membership currently uses UTC.
-
-**Today is derived.** There is no second "daily truth" table for the active
-product. Scheduling a task does not create DailyExecution.
-
-**Local-first.** SQLite is the source of truth. Foreign keys restrict deletes.
-Historical rows are not hard-deleted.
-
-**Backend as authority.** The desktop client is a view. Invalid states are
-rejected by domain and application services.
-
----
-
-## What v0.1.0 includes
-
-This is the first usable desktop MVP. It is not a claim that the product is
-finished.
-
-**In contract**
-
-- Cycles, Objectives, Key Results, Check-ins, Projects, Tasks, Reviews
-- Task scheduling (`scheduled_on`)
-- Today, with an explicit query date
-- Explicit task lifecycle
-- SQLite persistence and migrations
-- HTTP API
-- Tauri desktop shell and Chinese first-use flow
-
-**Intentionally outside this contract**
-
-Authentication, sync, cloud backend, AI, timezone-aware execution, calendar
-integration, recurring tasks, notifications, reminders, due dates, a Vision
-entity, a rich review workflow, and Settings.
-
-Those are not promised for a later version by this list. They are simply not
-part of v0.1.0.
-
----
-
-## Database
-
-Migrations live in `crates/forge-server/migrations/`. Existing files are never
-edited.
-
-| File | Role |
-|---|---|
-| `0001_initial.sql` | First schema, including leftover `visions` and `daily_executions` |
-| `0002_cycle_semantics.sql` | Cycle as planning root |
-| `0003_task_scheduling.sql` | `tasks.scheduled_on` (nullable `YYYY-MM-DD`) |
-
-`daily_executions` was not dropped. There is no backfill from DailyExecution
-into `scheduled_on`. Existing tasks remain unscheduled until you schedule them.
-
-Schema notes: [docs/database.md](docs/database.md).
-
----
-
-## API
-
-Base URL: `http://127.0.0.1:8080`.
-
-```
-GET  /health
-GET  /api/v1/today?date=YYYY-MM-DD
-
-POST /api/v1/projects/:id/tasks
-POST /api/v1/tasks/:id/start
-POST /api/v1/tasks/:id/complete
-POST /api/v1/tasks/:id/cancel
-POST /api/v1/tasks/:id/schedule
-```
-
-Errors use `{ "error": { "code", "message" } }`.
-Codes: `bad_request`, `domain`, `not_found`, `conflict`, `persistence`.
-
-Full routes and semantics: [docs/api.md](docs/api.md).
-Layering rules: [docs/architecture.md](docs/architecture.md).
-How to change this repository: [AGENTS.md](AGENTS.md).
-
----
-
-## Testing
-
-Backend (current counts):
-
-| Suite | Tests |
-|---|---|
-| Domain | 53 |
-| Application | 32 |
-| API | 13 |
-| SQLite | 8 |
-| **Total** | **106** |
-
-Frontend: Vitest, currently 25 tests (Today, scheduling UI, onboarding, status
-labels, API error mapping). There is no E2E suite.
-
-```bash
-cargo fmt --all -- --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
-npm test
-npm run build
-```
-
-`cargo test --workspace` does not run Tauri tests. `src-tauri` is excluded.
-
----
-
-## Current release
-
-**v0.1.0** is the first cut you can run every day: plan a cycle, schedule a
-task, and finish it on Today. It is a local MVP, not a complete personal OS.
-
-Versions are aligned at `0.1.0` in the Cargo workspace, `package.json`,
-`src-tauri/Cargo.toml`, and `tauri.conf.json`.
+Release notes: [CHANGELOG](./CHANGELOG.md)

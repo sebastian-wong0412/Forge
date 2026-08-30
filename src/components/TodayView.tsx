@@ -33,7 +33,7 @@ export function TodayView({
   const sections = [
     { title: "今日计划", tasks: today.scheduled },
     { title: "已逾期", tasks: today.overdue },
-    { title: "未排期进行中", tasks: today.unscheduled_in_progress },
+    { title: "进行中（未安排）", tasks: today.unscheduled_in_progress },
     { title: "今日完成", tasks: today.completed },
   ].filter((section) => section.tasks.length > 0);
 

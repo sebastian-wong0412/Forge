@@ -69,7 +69,7 @@ export function TaskDetailPage() {
       <section className="card stack">
         {current.description ? <p>{current.description}</p> : <p className="muted">暂无说明</p>}
         <p className="muted">
-          安排于 {current.scheduled_on ?? "—"} · 创建于 {formatTimestamp(current.created_at)}
+          安排到 {current.scheduled_on ?? "—"} · 创建于 {formatTimestamp(current.created_at)}
           {current.completed_at ? ` · 完成于 ${formatTimestamp(current.completed_at)}` : ""}
         </p>
         <TaskActions

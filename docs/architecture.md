@@ -44,16 +44,17 @@ Closed or archived cycles cannot gain Objective, Key Result, Project, Task, or C
 
 **Objective** belongs to a Cycle (`cycle_id`). Status is `draft` → `active` → `completed`. Dates are optional; when present they must fall inside the parent Cycle. Only draft or active objectives may create Key Results and Projects.
 
-**Key Result** belongs to an Objective. It stores `start_value` and optional `target_value`. `current_value` is not persisted and is not an authoritative write. It is derived from Check-ins:
+**Key Result** belongs to an Objective. It has a `progress_kind`: `numeric`, `percentage`, `milestone`, or `qualitative`. The kind cannot change after create. Derived fields (`current_value`, `current_state`, `latest_note`, `progress`) are not persisted.
 
-- no Check-ins → current = `start_value`
-- otherwise → value of the latest Check-in by `checked_on`, then `created_at`, then UUID v7
+- numeric / percentage: current is the latest check-in value, else `start_value`. Progress is `(current - start) / (target - start)`, clamped to `[0, 1]`. Missing target or `target == start` yields `null`.
+- milestone: current state defaults to `not_started`. Progress is `0` / `0.5` / `1`.
+- qualitative: current is the latest note. Progress is always `null`.
 
-Progress is `(current - start) / (target - start)`, clamped to `[0, 1]`. The formula supports increasing and decreasing targets. Missing target or `target == start` yields `null`. Reaching `progress >= 1` does not auto-complete the Key Result.
+Reaching `progress >= 1` or `achieved` does not auto-complete the Key Result.
 
-**Check-in** is an append-only business record. `checked_on` is the date the progress occurred. `created_at` is when Forge recorded it. There is no update or delete API.
+**Check-in** is an append-only business record. Payload must match the parent Key Result kind. Structured value/state may include a free-form `note`. Qualitative check-ins require a note. `checked_on` is the date the progress occurred. There is no update or delete API.
 
-**Project** belongs directly to an Objective. Projects and Key Results are siblings. Only an active project may create Tasks.
+**Project** belongs directly to an Objective. Projects and Key Results are siblings. Draft or active projects may create Tasks. Starting a Task, or activating a Project or Objective, promotes planning/draft ancestors to active. Closed, completed, or archived ancestors reject the whole operation.
 
 **Task** remains under Project. Status is `todo` → `in_progress` → `done`, or `todo`/`in_progress` → `cancelled`. Done and cancelled are terminal. A completed task has `completed_at`. Generic PATCH updates title/description only.
 

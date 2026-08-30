@@ -9,5 +9,7 @@ test("maps task and planning statuses to Chinese", () => {
   expect(statusLabel("active")).toBe("进行中");
   expect(statusLabel("closed")).toBe("已结束");
   expect(statusLabel("archived")).toBe("已归档");
-  expect(statusLabel("draft")).toBe("草稿");
+  expect(statusLabel("draft")).toBe("未开始");
+  expect(statusLabel("not_started")).toBe("未开始");
+  expect(statusLabel("achieved")).toBe("已达成");
 });

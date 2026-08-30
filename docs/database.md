@@ -50,9 +50,10 @@ Belongs to an objective. `current_value` is **not** stored.
 | `objective_id` | FK → `objectives.id` |
 | `title`, `description` | |
 | `status` | `draft`, `active`, `completed`, `archived` |
-| `start_value` | Required |
-| `target_value` | Optional |
-| `unit` | Optional |
+| `progress_kind` | `numeric`, `percentage`, `milestone`, `qualitative` |
+| `start_value` | Required for numeric / percentage |
+| `target_value` | Optional for numeric; required for percentage |
+| `unit` | Optional; numeric only |
 | `created_at` / `updated_at` | RFC3339 |
 
 Index: `idx_key_results_objective_id`.
@@ -65,8 +66,9 @@ Append-only history. `checked_on` is the date progress occurred. `created_at` is
 |---|---|
 | `id` | PK |
 | `key_result_id` | FK → `key_results.id` |
-| `value` | Recorded measurement |
-| `note` | Optional |
+| `value` | Numeric / percentage measurement; null otherwise |
+| `milestone_state` | `not_started` / `in_progress` / `achieved`; null otherwise |
+| `note` | Optional except qualitative |
 | `checked_on` | Progress date |
 | `created_at` / `updated_at` | Recorded-at timestamps |
 
@@ -129,7 +131,11 @@ Created in 0001. **Not dropped** in 0002. Not part of the active product model. 
 
 ### `daily_executions`
 
-Created in 0001. Unchanged in 0002. Frozen Phase 0 persistence. Do not add columns or tables for it. The table remains so existing rows and the leftover API surface keep working.
+Created in 0001. Unchanged in 0002–0004. Frozen Phase 0 persistence. Do not add columns or tables for it. The table remains so existing rows and the leftover API surface keep working.
+
+## Migration 0004
+
+Rebuilds `key_results` and `check_ins`. Existing key results become `progress_kind = numeric` with their original `start_value` / `target_value` / `unit`. Existing check-ins keep `value` and get `milestone_state = NULL`. `start_value` and `value` become nullable so milestone and qualitative rows can omit them.
 
 ## Migration 0002 assumptions
 

@@ -2,10 +2,20 @@ use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use forge_application::CreateCheckIn;
+use forge_domain::MilestoneState;
 use time::OffsetDateTime;
 
 use super::dto::{CheckInResponse, CreateCheckInRequest};
 use super::{ApiError, AppState, parse_id};
+
+fn parse_state(raw: Option<String>) -> Result<Option<MilestoneState>, ApiError> {
+    raw.map(|value| {
+        value
+            .parse()
+            .map_err(|err: forge_domain::DomainError| ApiError::bad_request(err.to_string()))
+    })
+    .transpose()
+}
 
 pub async fn create(
     State(state): State<AppState>,
@@ -19,6 +29,7 @@ pub async fn create(
             key_result_id,
             CreateCheckIn {
                 value: body.value,
+                state: parse_state(body.state)?,
                 note: body.note,
                 checked_on: body.checked_on,
             },

@@ -22,6 +22,7 @@ test("reloads check-in history after create", async () => {
         id: "c1",
         key_result_id: "kr-1",
         value: 1,
+        state: null,
         note: "First pass",
         checked_on: "2026-08-30",
         created_at: "2026-08-30T12:00:00Z",
@@ -32,6 +33,7 @@ test("reloads check-in history after create", async () => {
     id: "c1",
     key_result_id: "kr-1",
     value: 1,
+    state: null,
     note: "First pass",
     checked_on: "2026-08-30",
     created_at: "2026-08-30T12:00:00Z",
@@ -39,12 +41,18 @@ test("reloads check-in history after create", async () => {
   });
   const onKeyResultChanged = vi.fn().mockResolvedValue(undefined);
 
-  render(<CheckInPanel keyResultId="kr-1" onKeyResultChanged={onKeyResultChanged} />);
+  render(
+    <CheckInPanel
+      keyResultId="kr-1"
+      progressKind="numeric"
+      onKeyResultChanged={onKeyResultChanged}
+    />,
+  );
 
-  await screen.findByText("还没有进展记录。");
+  await screen.findByText("还没有进展。");
   fireEvent.change(screen.getByLabelText("数值"), { target: { value: "1" } });
   fireEvent.change(screen.getByLabelText("备注"), { target: { value: "First pass" } });
-  fireEvent.click(screen.getByRole("button", { name: "添加进展记录" }));
+  fireEvent.click(screen.getByRole("button", { name: "更新进展" }));
 
   await waitFor(() => {
     expect(createCheckInMock).toHaveBeenCalled();
@@ -53,4 +61,19 @@ test("reloads check-in history after create", async () => {
     expect(screen.getByText("1")).toBeInTheDocument();
     expect(screen.getByText("First pass")).toBeInTheDocument();
   });
+});
+
+test("qualitative check-in requires a note", async () => {
+  getCheckInsMock.mockResolvedValue([]);
+  render(
+    <CheckInPanel
+      keyResultId="kr-2"
+      progressKind="qualitative"
+      onKeyResultChanged={vi.fn().mockResolvedValue(undefined)}
+    />,
+  );
+
+  await screen.findByText("还没有进展。");
+  expect(screen.getByLabelText("说明")).toBeRequired();
+  expect(screen.queryByLabelText("数值")).not.toBeInTheDocument();
 });

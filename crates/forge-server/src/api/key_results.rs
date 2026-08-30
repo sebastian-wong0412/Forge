@@ -2,10 +2,16 @@ use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use forge_application::{CreateKeyResult, UpdateKeyResult};
+use forge_domain::ProgressKind;
 use time::OffsetDateTime;
 
 use super::dto::{CreateKeyResultRequest, KeyResultResponse, UpdateKeyResultRequest};
 use super::{ApiError, AppState, parse_id};
+
+fn parse_progress_kind(raw: &str) -> Result<ProgressKind, ApiError> {
+    raw.parse()
+        .map_err(|err: forge_domain::DomainError| ApiError::bad_request(err.to_string()))
+}
 
 pub async fn create(
     State(state): State<AppState>,
@@ -20,6 +26,7 @@ pub async fn create(
             CreateKeyResult {
                 title: body.title,
                 description: body.description,
+                progress_kind: parse_progress_kind(&body.progress_kind)?,
                 start_value: body.start_value,
                 target_value: body.target_value,
                 unit: body.unit,

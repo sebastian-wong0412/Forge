@@ -1,4 +1,7 @@
-use forge_domain::{KeyResult, KeyResultId, ObjectiveId, Title, latest_check_in};
+use forge_domain::{
+    KeyResult, KeyResultId, MilestoneState, ObjectiveId, ProgressDefinition, ProgressKind, Title,
+    latest_check_in,
+};
 use time::OffsetDateTime;
 
 use crate::AppError;
@@ -7,7 +10,8 @@ use crate::repos::{CheckInRepository, CycleRepository, KeyResultRepository, Obje
 pub struct CreateKeyResult {
     pub title: String,
     pub description: Option<String>,
-    pub start_value: f64,
+    pub progress_kind: ProgressKind,
+    pub start_value: Option<f64>,
     pub target_value: Option<f64>,
     pub unit: Option<String>,
 }
@@ -15,7 +19,7 @@ pub struct CreateKeyResult {
 pub struct UpdateKeyResult {
     pub title: String,
     pub description: Option<String>,
-    pub start_value: f64,
+    pub start_value: Option<f64>,
     pub target_value: Option<f64>,
     pub unit: Option<String>,
 }
@@ -23,7 +27,9 @@ pub struct UpdateKeyResult {
 #[derive(Debug, Clone, PartialEq)]
 pub struct KeyResultSnapshot {
     pub key_result: KeyResult,
-    pub current_value: f64,
+    pub current_value: Option<f64>,
+    pub current_state: Option<MilestoneState>,
+    pub latest_note: Option<String>,
     pub progress: Option<f64>,
 }
 
@@ -59,15 +65,13 @@ where
     ) -> Result<KeyResultSnapshot, AppError> {
         self.ensure_can_mutate_objective(objective_id).await?;
         let title = Title::parse(cmd.title)?;
-        let key_result = KeyResult::create(
-            objective_id,
-            title,
-            cmd.description,
+        let definition = ProgressDefinition::parse(
+            cmd.progress_kind,
             cmd.start_value,
             cmd.target_value,
             cmd.unit,
-            now,
-        );
+        )?;
+        let key_result = KeyResult::create(objective_id, title, cmd.description, definition, now);
         self.key_results.create(&key_result).await?;
         self.snapshot(key_result).await
     }
@@ -108,14 +112,13 @@ where
             .await?
             .ok_or_else(|| AppError::not_found("key_result", id))?;
         let title = Title::parse(cmd.title)?;
-        key_result.update(
-            title,
-            cmd.description,
+        let definition = ProgressDefinition::parse(
+            key_result.progress_kind(),
             cmd.start_value,
             cmd.target_value,
             cmd.unit,
-            now,
         )?;
+        key_result.update(title, cmd.description, definition, now)?;
         self.key_results.update(&key_result).await?;
         self.snapshot(key_result).await
     }
@@ -168,12 +171,12 @@ where
     async fn snapshot(&self, key_result: KeyResult) -> Result<KeyResultSnapshot, AppError> {
         let check_ins = self.check_ins.list_by_key_result(key_result.id()).await?;
         let latest = latest_check_in(&check_ins);
-        let current_value = key_result.current_value(latest);
-        let progress = key_result.progress(current_value);
         Ok(KeyResultSnapshot {
+            current_value: key_result.current_value(latest),
+            current_state: key_result.current_state(latest),
+            latest_note: key_result.latest_note(latest).map(str::to_string),
+            progress: key_result.progress(latest),
             key_result,
-            current_value,
-            progress,
         })
     }
 
@@ -262,7 +265,8 @@ mod tests {
                 CreateKeyResult {
                     title: "Weight".into(),
                     description: None,
-                    start_value: 500.0,
+                    progress_kind: ProgressKind::Numeric,
+                    start_value: Some(500.0),
                     target_value: Some(200.0),
                     unit: Some("kg".into()),
                 },
@@ -270,14 +274,16 @@ mod tests {
             )
             .await
             .unwrap();
-        assert_eq!(created.current_value, 500.0);
+        assert_eq!(created.current_value, Some(500.0));
         assert_eq!(created.progress, Some(0.0));
+        assert_eq!(created.key_result.progress_kind(), ProgressKind::Numeric);
 
         check_svc
             .create(
                 created.key_result.id(),
                 CreateCheckIn {
-                    value: 300.0,
+                    value: Some(300.0),
+                    state: None,
                     note: None,
                     checked_on: date!(2026 - 02 - 01),
                 },
@@ -286,7 +292,7 @@ mod tests {
             .await
             .unwrap();
         let updated = kr_svc.get(created.key_result.id()).await.unwrap();
-        assert_eq!(updated.current_value, 300.0);
+        assert_eq!(updated.current_value, Some(300.0));
         assert!((updated.progress.unwrap() - 2.0 / 3.0).abs() < 1e-9);
 
         objective_svc.activate(objective.id(), NOW).await.unwrap();
@@ -297,7 +303,8 @@ mod tests {
                 CreateKeyResult {
                     title: "Late".into(),
                     description: None,
-                    start_value: 0.0,
+                    progress_kind: ProgressKind::Numeric,
+                    start_value: Some(0.0),
                     target_value: Some(1.0),
                     unit: None,
                 },
@@ -306,5 +313,94 @@ mod tests {
             .await
             .unwrap_err();
         assert!(matches!(blocked, AppError::Conflict { .. }));
+    }
+
+    #[tokio::test]
+    async fn creates_each_progress_kind() {
+        let cycles = InMemoryCycleRepo::default();
+        let objectives = InMemoryObjectiveRepo::default();
+        let key_results = InMemoryKeyResultRepo::default();
+        let check_ins = InMemoryCheckInRepo::default();
+        let cycle_svc = CycleService::new(cycles.clone());
+        let objective_svc = ObjectiveService::new(cycles.clone(), objectives.clone());
+        let kr_svc = KeyResultService::new(cycles, objectives, key_results, check_ins);
+        let cycle = cycle_svc
+            .create(
+                CreateCycle {
+                    name: "Q1".into(),
+                    start_on: date!(2026 - 01 - 01),
+                    end_on: date!(2026 - 03 - 31),
+                },
+                NOW,
+            )
+            .await
+            .unwrap();
+        let objective = objective_svc
+            .create(
+                cycle.id(),
+                CreateObjective {
+                    title: "Ship".into(),
+                    description: None,
+                    start_on: None,
+                    end_on: None,
+                },
+                NOW,
+            )
+            .await
+            .unwrap();
+
+        let percentage = kr_svc
+            .create(
+                objective.id(),
+                CreateKeyResult {
+                    title: "Coverage".into(),
+                    description: None,
+                    progress_kind: ProgressKind::Percentage,
+                    start_value: Some(60.0),
+                    target_value: Some(90.0),
+                    unit: None,
+                },
+                NOW,
+            )
+            .await
+            .unwrap();
+        assert_eq!(percentage.progress, Some(0.0));
+
+        let milestone = kr_svc
+            .create(
+                objective.id(),
+                CreateKeyResult {
+                    title: "Launch".into(),
+                    description: None,
+                    progress_kind: ProgressKind::Milestone,
+                    start_value: None,
+                    target_value: None,
+                    unit: None,
+                },
+                NOW,
+            )
+            .await
+            .unwrap();
+        assert_eq!(milestone.current_state, Some(MilestoneState::NotStarted));
+        assert_eq!(milestone.progress, Some(0.0));
+        assert_eq!(milestone.current_value, None);
+
+        let qualitative = kr_svc
+            .create(
+                objective.id(),
+                CreateKeyResult {
+                    title: "Learn".into(),
+                    description: None,
+                    progress_kind: ProgressKind::Qualitative,
+                    start_value: None,
+                    target_value: None,
+                    unit: None,
+                },
+                NOW,
+            )
+            .await
+            .unwrap();
+        assert_eq!(qualitative.progress, None);
+        assert_eq!(qualitative.latest_note, None);
     }
 }

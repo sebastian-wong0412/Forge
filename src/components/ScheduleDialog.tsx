@@ -31,7 +31,7 @@ export function ScheduleDialog({
   }
 
   return (
-    <Dialog title={task.scheduled_on ? "修改日期" : "安排日期"} onClose={onClose}>
+    <Dialog title={task.scheduled_on ? "改期" : "安排日期"} onClose={onClose}>
       <form className="stack" onSubmit={submit}>
         <div className="field">
           <label htmlFor="scheduled-on">日期</label>
