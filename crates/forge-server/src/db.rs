@@ -7,12 +7,20 @@ use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions};
 #[derive(Debug, thiserror::Error)]
 pub enum DbError {
     #[error(transparent)]
+    Io(#[from] std::io::Error),
+    #[error(transparent)]
     Sqlx(#[from] sqlx::Error),
     #[error(transparent)]
     Migrate(#[from] sqlx::migrate::MigrateError),
 }
 
 pub async fn connect(path: &Path) -> Result<SqlitePool, DbError> {
+    if let Some(parent) = path.parent() {
+        if !parent.as_os_str().is_empty() {
+            std::fs::create_dir_all(parent)?;
+        }
+    }
+
     let options = SqliteConnectOptions::new()
         .filename(path)
         .create_if_missing(true)

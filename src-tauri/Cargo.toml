@@ -2,7 +2,7 @@
 
 [package]
 name = "forge-desktop"
-version = "0.2.0"
+version = "0.2.1"
 description = "Forge desktop shell"
 authors = ["Forge"]
 edition = "2021"
@@ -16,3 +16,11 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = [] }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_System_JobObjects",
+    "Win32_System_Threading",
+] }

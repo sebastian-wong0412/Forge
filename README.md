@@ -2,7 +2,7 @@
 
 > Personal execution, organized around outcomes.
 
-[![version](https://img.shields.io/badge/version-v0.2.0-1f1b14)](https://github.com/sebastian-wong0412/Forge)
+[![version](https://img.shields.io/badge/version-v0.2.1-1f1b14)](https://github.com/sebastian-wong0412/Forge)
 [![rust](https://img.shields.io/badge/rust-1.85+-dea584)](https://www.rust-lang.org/)
 [![react](https://img.shields.io/badge/ui-react%2019-61dafb)](https://react.dev/)
 [![tauri](https://img.shields.io/badge/desktop-tauri%202-24c8db)](https://tauri.app/)
@@ -49,30 +49,31 @@ Cycle
 
 ## Quick Start
 
-There is no installer yet. Run from source.
+### Windows
+
+Download the Windows x64 installer (`Forge_0.2.1_x64-setup.exe`) from [Releases](https://github.com/sebastian-wong0412/Forge/releases), install Forge, and open it from the Start Menu.
+
+You do not need Node, Rust, or a terminal. Forge starts its local backend automatically. Data lives in `%LOCALAPPDATA%\app.forge.desktop`.
+
+### From source
 
 Prerequisites: Rust stable, Node.js 22+, npm.
 
-The desktop window does not start the backend. Use two terminals:
-
 ```bash
-# Terminal 1 — API
-cargo run -p forge-server
-
-# Terminal 2 — desktop
 npm install
 npm run tauri dev
 ```
 
-Or open the UI in a browser:
+That starts the desktop window and the local API. The developer CLI is still available on its own:
 
 ```bash
-npm run dev
+cargo run -p forge-server
 ```
 
 | Surface | Address |
 |---|---|
-| API | `http://127.0.0.1:8080` |
+| Desktop API | `http://127.0.0.1:17340` |
+| Developer CLI API | `http://127.0.0.1:8080` |
 | Vite | `http://localhost:1420` |
 
 ## Architecture

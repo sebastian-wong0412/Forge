@@ -19,6 +19,11 @@ pub enum ConfigError {
 }
 
 impl Config {
+    /// Reads process environment.
+    ///
+    /// Defaults (developer CLI): `forge.db` in the working directory and
+    /// `127.0.0.1:8080`. The desktop shell overrides both so production data
+    /// lives under the user local app data directory (`%LOCALAPPDATA%\app.forge.desktop`).
     pub fn from_env() -> Result<Self, ConfigError> {
         let database_path = std::env::var("FORGE_DATABASE_PATH")
             .map(PathBuf::from)

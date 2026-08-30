@@ -15,6 +15,9 @@ dist/
 .env
 .env.*
 
+src-tauri/binaries/*
+!src-tauri/binaries/.gitkeep
+
 AGENTS.md
 .cursor/
 

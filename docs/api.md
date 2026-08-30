@@ -1,6 +1,6 @@
 # API
 
-Base URL: `http://127.0.0.1:8080` by default.
+Base URL: `http://127.0.0.1:8080` by default when running `cargo run -p forge-server`. The packaged desktop app uses `http://127.0.0.1:17340`. The HTTP routes and JSON bodies are the same.
 
 JSON DTOs are the HTTP contract. Domain entities are not serialized directly.
 

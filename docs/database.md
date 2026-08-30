@@ -8,6 +8,17 @@ SQLite is the source of truth. Migrations live in `crates/forge-server/migration
 - Timestamps are RFC3339 UTC text. Dates are `YYYY-MM-DD`.
 - IDs are UUID v7 text.
 
+## File location
+
+The developer CLI defaults to `forge.db` in the process working directory (`FORGE_DATABASE_PATH`).
+
+The packaged desktop app sets `FORGE_DATABASE_PATH` to:
+
+- Production: `%LOCALAPPDATA%\app.forge.desktop\forge.db`
+- `tauri dev`: `%LOCALAPPDATA%\app.forge.desktop\forge-dev.db`
+
+This is outside the current-user install directory (`%LOCALAPPDATA%\Forge`). The installer does not ship a database. Uninstalling Forge leaves this folder in place unless the user checks **Delete app data**.
+
 ## Active Phase 1A schema
 
 Applied by `0001_initial.sql` plus `0002_cycle_semantics.sql`.

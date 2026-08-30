@@ -1,4 +1,4 @@
-import { API_BASE_URL } from "../config";
+import { API_BASE_URL, isTauriShell } from "../config";
 import type { ApiErrorBody } from "./types";
 
 export class ApiClientError extends Error {
@@ -25,7 +25,9 @@ function localizeMessage(code: string): string {
     case "persistence":
       return "保存失败，请稍后重试。";
     case "unreachable":
-      return "无法连接到 Forge。请确认本地服务已启动。";
+      return isTauriShell()
+        ? "无法连接到 Forge。"
+        : "无法连接到 Forge。请确认本地服务已启动。";
     default:
       return "操作失败，请稍后重试。";
   }

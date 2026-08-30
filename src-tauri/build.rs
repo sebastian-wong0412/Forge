@@ -1,3 +1,5 @@
 fn main() {
-    tauri_build::build()
+    let target = std::env::var("TARGET").unwrap_or_else(|_| "unknown".to_string());
+    println!("cargo:rustc-env=TARGET_TRIPLE={target}");
+    tauri_build::build();
 }

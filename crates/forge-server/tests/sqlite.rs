@@ -666,3 +666,12 @@ async fn key_result_progress_migration_preserves_numeric_rows() {
     assert_eq!(value, 300.0);
     assert!(state.is_none());
 }
+
+#[tokio::test]
+async fn connect_creates_missing_parent_directories() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("nested").join("data").join("forge.db");
+    let pool = forge_server::db::connect(&path).await.unwrap();
+    forge_server::db::migrate(&pool).await.unwrap();
+    assert!(path.exists());
+}

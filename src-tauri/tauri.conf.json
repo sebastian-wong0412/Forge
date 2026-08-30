@@ -1,12 +1,12 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Forge",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "identifier": "app.forge.desktop",
   "build": {
-    "beforeDevCommand": "npm run dev",
+    "beforeDevCommand": "node scripts/copy-sidecar.mjs debug && npm run dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "npm run build",
+    "beforeBuildCommand": "node scripts/copy-sidecar.mjs release && npm run build",
     "frontendDist": "../dist"
   },
   "app": {
@@ -20,18 +20,33 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; connect-src 'self' http://127.0.0.1:8080 http://localhost:8080; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
+      "csp": "default-src 'self'; connect-src 'self' http://127.0.0.1:17340 http://localhost:17340 http://127.0.0.1:8080 http://localhost:8080; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
     }
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["nsis"],
+    "publisher": "Sebastian Wong",
+    "copyright": "Copyright © 2026 Sebastian Wong",
+    "category": "Productivity",
+    "shortDescription": "Personal execution, organized around outcomes.",
+    "longDescription": "Forge is a local-first personal execution system. Plan a cycle, name the outcome, and work from Today — without a cloud account or a developer toolchain.",
+    "licenseFile": "../LICENSE",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "externalBin": ["binaries/forge-server"],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "displayLanguageSelector": false,
+        "installerIcon": "icons/icon.ico",
+        "languages": ["SimpChinese", "English"]
+      }
+    }
   }
 }

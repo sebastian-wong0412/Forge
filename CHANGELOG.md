@@ -4,6 +4,32 @@ All notable changes to Forge are documented here.
 
 ## [Unreleased]
 
+## [0.2.1] — 2026-08-30
+
+### Added
+
+- Windows NSIS installer for Forge
+- Bundled local Forge backend
+- Automatic backend startup when launching the desktop app
+- Persistent local application data storage
+
+### Changed
+
+- Forge can now be installed and launched by non-technical Windows users without a terminal
+- Desktop production backend uses a dedicated local port and application data directory
+
+### Fixed
+
+- Desktop startup no longer requires manually running `forge-server`
+
+### Technical
+
+- Added Tauri sidecar packaging for `forge-server`
+- Added backend health-check before opening the desktop UI
+- Added Windows Job Object lifecycle management for the backend process
+- Switched Windows installer target from WiX/MSI to NSIS
+- Existing v0.2.0 database migration and product functionality remain unchanged
+
 ## [0.2.0] — 2026-08-30
 
 ### Added
