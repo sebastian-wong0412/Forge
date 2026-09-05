@@ -286,22 +286,49 @@ jobs:
             --notes-file $notesFile `
             --verify-tag
 
-          $release = gh release view $tag --json tagName,url,assets | ConvertFrom-Json
-          if ($release.tagName -ne $tag) {
-            throw "Created release tag '$($release.tagName)' does not match $tag"
+          $restRelease = gh api "repos/$env:GITHUB_REPOSITORY/releases/tags/$tag" | ConvertFrom-Json
+          if ($restRelease.tag_name -ne $tag) {
+            throw "Created release tag '$($restRelease.tag_name)' does not match $tag"
           }
 
-          $asset = @($release.assets | Where-Object { $_.name -eq $installerName })
-          if ($asset.Count -ne 1) {
-            throw "Release $tag does not contain exactly one asset named $installerName"
+          $assets = @($restRelease.assets)
+          if ($assets.Count -ne 1) {
+            $names = ($assets | ForEach-Object { $_.name }) -join ", "
+            throw "Release $tag must contain exactly one asset, found $($assets.Count): $names"
           }
 
-          $apiAsset = gh api "repos/$env:GITHUB_REPOSITORY/releases/assets/$($asset[0].id)" | ConvertFrom-Json
-          if ($apiAsset.state -ne "uploaded" -or $apiAsset.name -ne $installerName) {
-            throw "Release asset verification failed for $installerName"
+          $apiAsset = $assets[0]
+          if ("$($apiAsset.id)" -notmatch '^\d+$') {
+            throw "Release asset id '$($apiAsset.id)' is not a REST numeric id"
+          }
+          if ($apiAsset.name -ne $installerName) {
+            throw "Release asset name '$($apiAsset.name)' does not match required '$installerName'"
+          }
+          if ($apiAsset.state -ne "uploaded") {
+            throw "Release asset $($apiAsset.name) state is '$($apiAsset.state)', expected uploaded"
+          }
+          if ($apiAsset.size -le 0) {
+            throw "Release asset $($apiAsset.name) is empty"
           }
 
-          "url=$($release.url)" >> $env:GITHUB_OUTPUT
+          $localSize = (Get-Item -LiteralPath $installer).Length
+          if ($apiAsset.size -ne $localSize) {
+            throw "Release asset size $($apiAsset.size) does not match local installer $localSize"
+          }
+
+          $verifyDir = Join-Path $env:RUNNER_TEMP "release-asset-verify"
+          New-Item -ItemType Directory -Path $verifyDir -Force | Out-Null
+          gh release download $tag --pattern $installerName --dir $verifyDir --clobber
+          $downloaded = Join-Path $verifyDir $installerName
+          if (-not (Test-Path -LiteralPath $downloaded)) {
+            throw "Failed to download $installerName from Release $tag for checksum verification"
+          }
+          $downloadedHash = (Get-FileHash -LiteralPath $downloaded -Algorithm SHA256).Hash.ToLower()
+          if ($downloadedHash -ne $sha) {
+            throw "Release asset SHA-256 $downloadedHash does not match built installer $sha"
+          }
+
+          "url=$($restRelease.html_url)" >> $env:GITHUB_OUTPUT
 
       - name: Release summary
         if: always() && steps.meta.outcome == 'success'
