@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import type { IsoDate, Task, TodayResponse } from "../api/types";
-import { useSettings } from "../i18n";
+import { useT } from "../i18n";
 import { formatCalendarDate } from "../lib/dates";
 import { EmptyState } from "./EmptyState";
 import { OnboardingCard } from "./OnboardingCard";
@@ -31,7 +31,7 @@ export function TodayView({
   onSchedule: (task: Task) => void;
   onUnschedule: (task: Task) => void;
 }) {
-  const { t, locale } = useSettings();
+  const t = useT();
   const sections = [
     { title: t("today.section.scheduled"), tasks: today.scheduled },
     { title: t("today.section.overdue"), tasks: today.overdue },
@@ -43,7 +43,7 @@ export function TodayView({
     <div className="stack">
       <PageHeader
         kicker={t("today.kicker")}
-        title={formatCalendarDate(today.date, locale)}
+        title={formatCalendarDate(today.date)}
         actions={
           <TodayDateNav date={today.date} localToday={localToday} onChange={onDateChange} />
         }

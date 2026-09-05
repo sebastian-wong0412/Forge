@@ -37,10 +37,9 @@ test("Cycle empty state is Chinese", async () => {
     </MemoryRouter>,
   );
   expect(await screen.findByText("还没有周期")).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: "创建第一个周期" })).toHaveAttribute(
-    "href",
-    "#create-cycle",
-  );
+  expect(screen.queryByRole("link", { name: "创建第一个周期" })).not.toBeInTheDocument();
+  expect(screen.queryByText("创建第一个周期")).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "创建周期" })).toBeInTheDocument();
 });
 
 test("Objective and Project empty states are Chinese", async () => {

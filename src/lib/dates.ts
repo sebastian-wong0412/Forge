@@ -1,5 +1,11 @@
 import type { IsoDate, Rfc3339 } from "../api/types";
-import { resolveLocale, type Locale } from "../i18n";
+
+const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
+const DISPLAY_DATE = /^(\d{4})[/.-](\d{1,2})[/.-](\d{1,2})$/;
+
+function pad2(value: number): string {
+  return String(value).padStart(2, "0");
+}
 
 export function shiftCalendarDate(date: IsoDate, days: number): IsoDate {
   const [year, month, day] = date.split("-").map(Number);
@@ -8,53 +14,64 @@ export function shiftCalendarDate(date: IsoDate, days: number): IsoDate {
   }
   const shifted = new Date(Date.UTC(year, month - 1, day + days));
   const nextYear = shifted.getUTCFullYear();
-  const nextMonth = String(shifted.getUTCMonth() + 1).padStart(2, "0");
-  const nextDay = String(shifted.getUTCDate()).padStart(2, "0");
+  const nextMonth = pad2(shifted.getUTCMonth() + 1);
+  const nextDay = pad2(shifted.getUTCDate());
   return `${nextYear}-${nextMonth}-${nextDay}`;
 }
 
 export function localCalendarDate(now = new Date()): IsoDate {
   const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
+  const month = pad2(now.getMonth() + 1);
+  const day = pad2(now.getDate());
   return `${year}-${month}-${day}`;
 }
 
-export function formatCalendarDate(
-  date: IsoDate,
-  locale: Locale = resolveLocale("system"),
-): string {
+function isRealUtcDate(year: number, month: number, day: number): boolean {
+  const utc = new Date(Date.UTC(year, month - 1, day));
+  return (
+    utc.getUTCFullYear() === year && utc.getUTCMonth() === month - 1 && utc.getUTCDate() === day
+  );
+}
+
+export function parseDisplayDate(value: string): IsoDate | null {
+  const trimmed = value.trim();
+  const match = trimmed.match(ISO_DATE) ?? trimmed.match(DISPLAY_DATE);
+  if (!match) {
+    return null;
+  }
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (!isRealUtcDate(year, month, day)) {
+    return null;
+  }
+  return `${match[1]}-${pad2(month)}-${pad2(day)}`;
+}
+
+export function formatDisplayDate(date: string): string {
+  const parsed = parseDisplayDate(date);
+  if (!parsed) {
+    return date;
+  }
+  const [year, month, day] = parsed.split("-");
+  return `${year}/${month}/${day}`;
+}
+
+export function formatCalendarDate(date: IsoDate): string {
   const [year, month, day] = date.split("-");
   const monthIndex = Number(month) - 1;
   if (!year || monthIndex < 0 || monthIndex > 11 || !day) {
     return date;
   }
-  if (locale === "en") {
-    return new Date(Date.UTC(Number(year), monthIndex, Number(day))).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      timeZone: "UTC",
-    });
-  }
-  return `${year}年${Number(month)}月${Number(day)}日`;
+  return formatDisplayDate(date);
 }
 
-export function formatTimestamp(
-  value: Rfc3339,
-  locale: Locale = resolveLocale("system"),
-): string {
+export function formatTimestamp(value: Rfc3339): string {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
     return value;
   }
-  return parsed.toLocaleString(locale === "zh" ? "zh-CN" : "en-US", {
-    year: "numeric",
-    month: "numeric",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return `${parsed.getFullYear()}/${pad2(parsed.getMonth() + 1)}/${pad2(parsed.getDate())} ${pad2(parsed.getHours())}:${pad2(parsed.getMinutes())}`;
 }
 
 export function dateRange(start: IsoDate | null, end: IsoDate | null): string | null {
@@ -62,7 +79,7 @@ export function dateRange(start: IsoDate | null, end: IsoDate | null): string | 
     return null;
   }
   if (start && end) {
-    return `${start} – ${end}`;
+    return `${formatDisplayDate(start)} – ${formatDisplayDate(end)}`;
   }
-  return start ?? end;
+  return formatDisplayDate(start ?? end ?? "");
 }

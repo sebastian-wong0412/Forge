@@ -29,7 +29,8 @@ function renderToday(
 test("renders the requested calendar date and Today heading", () => {
   renderToday(today({ date: "2026-08-30" }));
   expect(screen.getByText("今日", { selector: ".page-kicker" })).toBeInTheDocument();
-  expect(screen.getByText("2026年8月30日")).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "2026/08/30" })).toBeInTheDocument();
+  expect(screen.getByText("2026/08/30", { selector: ".date-nav-current" })).toBeInTheDocument();
 });
 
 test("renders backend buckets without recalculating membership", () => {
@@ -84,7 +85,7 @@ test("renders scheduled_on as a calendar date string", () => {
       scheduled: [task({ title: "Dated task", scheduled_on: "2026-08-30" })],
     }),
   );
-  expect(screen.getByText("安排到 2026-08-30")).toBeInTheDocument();
+  expect(screen.getByText("安排到 2026/08/30")).toBeInTheDocument();
 });
 
 test("shows an empty Today state with a Cycles CTA", () => {

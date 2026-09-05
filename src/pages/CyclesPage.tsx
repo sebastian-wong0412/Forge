@@ -1,6 +1,7 @@
 import { FormEvent, useState } from "react";
 import { Link } from "react-router-dom";
 import { createCycle, getCycles, type Cycle } from "../api";
+import { DateField } from "../components/DateField";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
@@ -9,6 +10,7 @@ import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { useLoad } from "../hooks/useLoad";
 import { useT } from "../i18n";
+import { formatDisplayDate } from "../lib/dates";
 
 export function CyclesPage() {
   const t = useT();
@@ -51,15 +53,7 @@ export function CyclesPage() {
     <div className="stack">
       <PageHeader kicker={t("cycles.kicker")} title={t("cycles.title")} meta={t("cycles.meta")} />
       {cycles.length === 0 ? (
-        <EmptyState
-          title={t("cycles.empty.title")}
-          detail={t("cycles.empty.detail")}
-          action={
-            <a href="#create-cycle" className="btn btn-primary">
-              {t("cycles.empty.action")}
-            </a>
-          }
-        />
+        <EmptyState title={t("cycles.empty.title")} detail={t("cycles.empty.detail")} />
       ) : null}
       {cycles.length === 0 ? (
         <ul className="muted example-list">
@@ -87,7 +81,7 @@ export function CyclesPage() {
               <StatusBadge status={cycle.status} />
             </div>
             <p className="muted">
-              {cycle.start_on} – {cycle.end_on}
+              {formatDisplayDate(cycle.start_on)} – {formatDisplayDate(cycle.end_on)}
             </p>
           </Link>
         ))}
@@ -101,28 +95,17 @@ export function CyclesPage() {
               id="cycle-name"
               value={name}
               onChange={(event) => setName(event.target.value)}
+              placeholder={t("cycles.form.name.placeholder")}
               required
             />
           </div>
           <div className="field">
             <label htmlFor="cycle-start">{t("cycles.form.start")}</label>
-            <input
-              id="cycle-start"
-              type="date"
-              value={startOn}
-              onChange={(event) => setStartOn(event.target.value)}
-              required
-            />
+            <DateField id="cycle-start" value={startOn} onChange={setStartOn} required />
           </div>
           <div className="field">
             <label htmlFor="cycle-end">{t("cycles.form.end")}</label>
-            <input
-              id="cycle-end"
-              type="date"
-              value={endOn}
-              onChange={(event) => setEndOn(event.target.value)}
-              required
-            />
+            <DateField id="cycle-end" value={endOn} onChange={setEndOn} required />
           </div>
         </div>
         {formError ? <ErrorState message={formError} /> : null}

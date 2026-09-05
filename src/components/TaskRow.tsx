@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import type { Task } from "../api/types";
 import { useT } from "../i18n";
+import { formatDisplayDate } from "../lib/dates";
 import { TaskActions } from "./TaskActions";
 import { TaskStatusIcon } from "./TaskStatusIcon";
 
@@ -38,7 +39,7 @@ export function TaskRow({
         <div className="task-meta">
           {projectTitle ? `${projectTitle} · ` : ""}
           {task.scheduled_on
-            ? t("tasks.scheduledOn", { date: task.scheduled_on })
+            ? t("tasks.scheduledOn", { date: formatDisplayDate(task.scheduled_on) })
             : t("tasks.unscheduled")}
         </div>
       </button>

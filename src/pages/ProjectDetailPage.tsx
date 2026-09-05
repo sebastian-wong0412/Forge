@@ -10,7 +10,9 @@ import {
   getProject,
   getTasks,
 } from "../api";
+import { BackButton } from "../components/BackButton";
 import { Breadcrumbs } from "../components/Breadcrumbs";
+import { DateField } from "../components/DateField";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
@@ -62,6 +64,7 @@ export function ProjectDetailPage() {
 
   return (
     <div className="stack">
+      <BackButton fallback={`/objectives/${project.data.objective_id}`} />
       <Breadcrumbs
         items={[
           { label: t("cycles.breadcrumb"), to: "/cycles" },
@@ -189,6 +192,7 @@ function CreateTaskForm({
             id="task-title"
             value={title}
             onChange={(event) => setTitle(event.target.value)}
+            placeholder={t("tasks.form.name.placeholder")}
             required
             disabled={disabled}
           />
@@ -204,11 +208,10 @@ function CreateTaskForm({
         </div>
         <div className="field">
           <label htmlFor="task-scheduled">{t("tasks.form.scheduled")}</label>
-          <input
+          <DateField
             id="task-scheduled"
-            type="date"
             value={scheduledOn}
-            onChange={(event) => setScheduledOn(event.target.value)}
+            onChange={setScheduledOn}
             disabled={disabled}
           />
         </div>

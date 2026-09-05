@@ -1,5 +1,6 @@
 import { useParams } from "react-router-dom";
 import { getCycle, getObjective, getProject, getTask } from "../api";
+import { BackButton } from "../components/BackButton";
 import { Breadcrumbs } from "../components/Breadcrumbs";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
@@ -10,11 +11,11 @@ import { TaskActions } from "../components/TaskActions";
 import { TaskStatusIcon } from "../components/TaskStatusIcon";
 import { useLoad } from "../hooks/useLoad";
 import { useTaskMutations } from "../hooks/useTaskMutations";
-import { useSettings } from "../i18n";
-import { formatTimestamp } from "../lib/dates";
+import { useT } from "../i18n";
+import { formatDisplayDate, formatTimestamp } from "../lib/dates";
 
 export function TaskDetailPage() {
-  const { t, locale } = useSettings();
+  const t = useT();
   const { taskId = "" } = useParams();
   const task = useLoad(() => getTask(taskId), [taskId]);
   const project = useLoad(
@@ -43,11 +44,12 @@ export function TaskDetailPage() {
   }
 
   const completed = current.completed_at
-    ? ` · ${t("tasks.completedAt", { time: formatTimestamp(current.completed_at, locale) })}`
+    ? ` · ${t("tasks.completedAt", { time: formatTimestamp(current.completed_at) })}`
     : "";
 
   return (
     <div className="stack">
+      <BackButton fallback={`/projects/${current.project_id}`} />
       <Breadcrumbs
         items={[
           { label: t("cycles.breadcrumb"), to: "/cycles" },
@@ -76,8 +78,10 @@ export function TaskDetailPage() {
         {current.description ? <p>{current.description}</p> : <p className="muted">{t("common.noDescription")}</p>}
         <p className="muted">
           {t("tasks.meta", {
-            scheduled: current.scheduled_on ?? t("common.emDash"),
-            created: formatTimestamp(current.created_at, locale),
+            scheduled: current.scheduled_on
+              ? formatDisplayDate(current.scheduled_on)
+              : t("common.emDash"),
+            created: formatTimestamp(current.created_at),
             completed,
           })}
         </p>

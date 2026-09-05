@@ -17,6 +17,7 @@ import {
   type ProgressKind,
   type Project,
 } from "../api";
+import { BackButton } from "../components/BackButton";
 import { Breadcrumbs } from "../components/Breadcrumbs";
 import { CheckInPanel } from "../components/CheckInPanel";
 import { EmptyState } from "../components/EmptyState";
@@ -25,8 +26,16 @@ import { LoadingState } from "../components/LoadingState";
 import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { useLoad } from "../hooks/useLoad";
-import { useT, type TranslateFn } from "../i18n";
+import { useT, type TranslateFn, type MessageKey } from "../i18n";
+import { dateRange } from "../lib/dates";
 import { statusLabel } from "../lib/status";
+
+const KR_TITLE_PLACEHOLDER: Record<ProgressKind, MessageKey> = {
+  numeric: "keyResults.form.title.placeholder.numeric",
+  percentage: "keyResults.form.title.placeholder.percentage",
+  milestone: "keyResults.form.title.placeholder.milestone",
+  qualitative: "keyResults.form.title.placeholder.qualitative",
+};
 
 export function ObjectiveDetailPage() {
   const t = useT();
@@ -64,8 +73,11 @@ export function ObjectiveDetailPage() {
     return <ErrorState message={t("error.objectiveNotFound")} />;
   }
 
+  const objectiveDates = dateRange(objective.data.start_on, objective.data.end_on);
+
   return (
     <div className="stack">
+      <BackButton fallback={`/cycles/${objective.data.cycle_id}`} />
       <Breadcrumbs
         items={[
           { label: t("cycles.breadcrumb"), to: "/cycles" },
@@ -78,9 +90,7 @@ export function ObjectiveDetailPage() {
         title={objective.data.title}
         meta={
           <>
-            {objective.data.start_on && objective.data.end_on
-              ? `${objective.data.start_on} – ${objective.data.end_on} · `
-              : null}
+            {objectiveDates ? `${objectiveDates} · ` : null}
             <StatusBadge status={objective.data.status} />
             {objective.data.description ? ` · ${objective.data.description}` : null}
           </>
@@ -222,7 +232,13 @@ function KeyResultsSection({
         <div className="form-grid">
           <div className="field">
             <label htmlFor="kr-title">{t("keyResults.form.title")}</label>
-            <input id="kr-title" value={title} onChange={(event) => setTitle(event.target.value)} required />
+            <input
+              id="kr-title"
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              placeholder={t(KR_TITLE_PLACEHOLDER[progressKind])}
+              required
+            />
           </div>
           <div className="field">
             <label htmlFor="kr-kind">{t("keyResults.form.kind")}</label>
@@ -389,6 +405,7 @@ function ProjectsSection({
             id="project-title"
             value={title}
             onChange={(event) => setTitle(event.target.value)}
+            placeholder={t("projects.form.placeholder")}
             required
           />
         </div>

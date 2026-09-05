@@ -1,6 +1,6 @@
 import type { IsoDate } from "../api/types";
 import { useT } from "../i18n";
-import { shiftCalendarDate } from "../lib/dates";
+import { formatDisplayDate, shiftCalendarDate } from "../lib/dates";
 
 export function TodayDateNav({
   date,
@@ -18,7 +18,7 @@ export function TodayDateNav({
       <button type="button" className="btn" onClick={() => onChange(shiftCalendarDate(date, -1))}>
         {t("today.prevDay")}
       </button>
-      <span className="date-nav-current">{date}</span>
+      <span className="date-nav-current">{formatDisplayDate(date)}</span>
       <button type="button" className="btn" onClick={() => onChange(localToday)}>
         {t("today.today")}
       </button>

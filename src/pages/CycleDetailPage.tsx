@@ -13,7 +13,9 @@ import {
   type Objective,
   type Project,
 } from "../api";
+import { BackButton } from "../components/BackButton";
 import { Breadcrumbs } from "../components/Breadcrumbs";
+import { DateField } from "../components/DateField";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
@@ -22,6 +24,7 @@ import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { useLoad } from "../hooks/useLoad";
 import { useT, type TranslateFn } from "../i18n";
+import { dateRange, formatDisplayDate } from "../lib/dates";
 
 export function CycleDetailPage() {
   const t = useT();
@@ -58,6 +61,7 @@ export function CycleDetailPage() {
 
   return (
     <div className="stack">
+      <BackButton fallback="/cycles" />
       <Breadcrumbs
         items={[{ label: t("cycles.breadcrumb"), to: "/cycles" }, { label: cycle.data.name }]}
       />
@@ -66,7 +70,8 @@ export function CycleDetailPage() {
         title={cycle.data.name}
         meta={
           <>
-            {cycle.data.start_on} – {cycle.data.end_on} · <StatusBadge status={cycle.data.status} />
+            {dateRange(cycle.data.start_on, cycle.data.end_on)} ·{" "}
+            <StatusBadge status={cycle.data.status} />
           </>
         }
         actions={
@@ -169,6 +174,7 @@ function ObjectivesSection({
             id="objective-title"
             value={title}
             onChange={(event) => setTitle(event.target.value)}
+            placeholder={t("objectives.form.placeholder")}
             required
           />
         </div>
@@ -192,9 +198,7 @@ function ObjectiveProjects({ objective }: { objective: Objective }) {
         <StatusBadge status={objective.status} />
       </div>
       <p className="muted">
-        {objective.start_on && objective.end_on
-          ? `${objective.start_on} – ${objective.end_on}`
-          : t("common.dateUnset")}
+        {dateRange(objective.start_on, objective.end_on) ?? t("common.dateUnset")}
       </p>
       <ProjectSummary projects={projects.data ?? []} t={t} />
     </Link>
@@ -258,7 +262,7 @@ function ReviewsSection({
           <p>{review.content}</p>
           <p className="muted">
             {review.period_start || review.period_end
-              ? `${review.period_start ?? t("common.ellipsis")} – ${review.period_end ?? t("common.ellipsis")}`
+              ? `${review.period_start ? formatDisplayDate(review.period_start) : t("common.ellipsis")} – ${review.period_end ? formatDisplayDate(review.period_end) : t("common.ellipsis")}`
               : t("common.periodUnset")}
           </p>
         </article>
@@ -277,21 +281,11 @@ function ReviewsSection({
         <div className="form-grid">
           <div className="field">
             <label htmlFor="review-start">{t("reviews.form.start")}</label>
-            <input
-              id="review-start"
-              type="date"
-              value={periodStart}
-              onChange={(event) => setPeriodStart(event.target.value)}
-            />
+            <DateField id="review-start" value={periodStart} onChange={setPeriodStart} />
           </div>
           <div className="field">
             <label htmlFor="review-end">{t("reviews.form.end")}</label>
-            <input
-              id="review-end"
-              type="date"
-              value={periodEnd}
-              onChange={(event) => setPeriodEnd(event.target.value)}
-            />
+            <DateField id="review-end" value={periodEnd} onChange={setPeriodEnd} />
           </div>
         </div>
         {formError ? <ErrorState message={formError} /> : null}

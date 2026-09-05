@@ -38,7 +38,8 @@ html,
 body,
 #root {
   margin: 0;
-  min-height: 100%;
+  height: 100%;
+  overflow: hidden;
   background: var(--bg);
 }
 
@@ -72,7 +73,9 @@ p {
 .app-shell {
   display: grid;
   grid-template-columns: var(--sidebar-width) 1fr;
-  min-height: 100vh;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .sidebar {
@@ -82,6 +85,8 @@ p {
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
+  min-height: 0;
+  overflow: auto;
 }
 
 .brand {
@@ -157,6 +162,9 @@ p {
 .main {
   padding: var(--space-6);
   max-width: 980px;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
 }
 
 .page-header {
@@ -323,6 +331,10 @@ p {
   cursor: pointer;
 }
 
+.back-btn {
+  align-self: flex-start;
+}
+
 .btn:hover:not(:disabled),
 .btn:focus-visible {
   border-color: var(--accent);
@@ -367,6 +379,12 @@ p {
   background: var(--input-bg);
   color: var(--text);
   padding: 7px 9px;
+}
+
+.field input::placeholder,
+.field textarea::placeholder {
+  color: var(--muted);
+  opacity: 1;
 }
 
 .field input:focus,
@@ -498,6 +516,7 @@ p {
 @media (max-width: 860px) {
   .app-shell {
     grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
   }
 
   .sidebar {
@@ -507,6 +526,8 @@ p {
     align-items: center;
     justify-content: space-between;
     padding: var(--space-3) var(--space-4);
+    overflow: auto;
+    height: auto;
   }
 
   .nav {

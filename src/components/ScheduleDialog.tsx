@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import type { IsoDate, Task } from "../api/types";
 import { useT } from "../i18n";
 import { localCalendarDate } from "../lib/dates";
+import { DateField } from "./DateField";
 import { Dialog } from "./Dialog";
 
 export function ScheduleDialog({
@@ -37,13 +38,7 @@ export function ScheduleDialog({
       <form className="stack" onSubmit={submit}>
         <div className="field">
           <label htmlFor="scheduled-on">{t("tasks.date")}</label>
-          <input
-            id="scheduled-on"
-            type="date"
-            required
-            value={date}
-            onChange={(event) => setDate(event.target.value)}
-          />
+          <DateField id="scheduled-on" value={date} onChange={setDate} required />
         </div>
         {error ? <p className="state error">{error}</p> : null}
         <div className="row">

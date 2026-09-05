@@ -4,6 +4,16 @@ All notable changes to Forge are documented here.
 
 ## [Unreleased]
 
+## [0.3.1] — 2026-09-05
+
+### Fixed
+
+- 修复左侧导航栏跟随主内容滚动的问题
+- 增加各层级 detail 页面明确的返回导航
+- 移除 Cycle 空状态中重复的创建按钮
+- 为主要实体输入框增加示例 placeholder
+- 统一日期显示格式为 `YYYY/MM/DD`
+
 ## [0.3.0] — 2026-08-31
 
 ### Added

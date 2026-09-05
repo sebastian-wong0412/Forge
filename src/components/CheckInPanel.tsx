@@ -3,7 +3,8 @@ import { createCheckIn, getCheckIns } from "../api";
 import type { MilestoneState, ProgressKind } from "../api/types";
 import { useLoad } from "../hooks/useLoad";
 import { useT } from "../i18n";
-import { localCalendarDate } from "../lib/dates";
+import { formatDisplayDate, localCalendarDate } from "../lib/dates";
+import { DateField } from "./DateField";
 import { statusLabel } from "../lib/status";
 import { EmptyState } from "./EmptyState";
 import { ErrorState } from "./ErrorState";
@@ -65,7 +66,7 @@ export function CheckInPanel({
                     ? checkIn.value
                     : checkIn.note}
               </strong>{" "}
-              <span className="muted">{checkIn.checked_on}</span>
+              <span className="muted">{formatDisplayDate(checkIn.checked_on)}</span>
               {checkIn.note && (checkIn.value !== null || checkIn.state) ? (
                 <p>{checkIn.note}</p>
               ) : null}
@@ -108,11 +109,10 @@ export function CheckInPanel({
           ) : null}
           <div className="field">
             <label htmlFor={`checkin-date-${keyResultId}`}>{t("checkIn.date")}</label>
-            <input
+            <DateField
               id={`checkin-date-${keyResultId}`}
-              type="date"
               value={checkedOn}
-              onChange={(event) => setCheckedOn(event.target.value)}
+              onChange={setCheckedOn}
               required
             />
           </div>
