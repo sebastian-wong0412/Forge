@@ -7,6 +7,7 @@ export function TaskList({
   tasks,
   empty,
   projectTitle,
+  projectTitles,
   busyId,
   onStart,
   onComplete,
@@ -18,6 +19,7 @@ export function TaskList({
   tasks: Task[];
   empty: string;
   projectTitle?: string;
+  projectTitles?: Record<string, string>;
   busyId?: string | null;
   onStart: (task: Task) => void;
   onComplete: (task: Task) => void;
@@ -36,7 +38,7 @@ export function TaskList({
             <TaskRow
               key={task.id}
               task={task}
-              projectTitle={projectTitle}
+              projectTitle={projectTitle ?? projectTitles?.[task.project_id]}
               busy={busyId === task.id}
               onStart={() => onStart(task)}
               onComplete={() => onComplete(task)}

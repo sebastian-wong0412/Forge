@@ -303,6 +303,13 @@ p {
   font-weight: 600;
 }
 
+.task-project {
+  margin-top: 2px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
 .task-row-open {
   border: 0;
   background: transparent;
@@ -459,6 +466,11 @@ p {
   padding: var(--space-5);
   color: var(--muted);
   background: var(--surface);
+}
+
+.state-title {
+  margin: 0 0 8px;
+  color: var(--text);
 }
 
 .state.error {

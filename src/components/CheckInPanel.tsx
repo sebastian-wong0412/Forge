@@ -51,6 +51,10 @@ export function CheckInPanel({
 
   return (
     <div className="stack">
+      <div>
+        <h3 className="section-title">{t("checkIn.heading")}</h3>
+        <p className="muted">{t("checkIn.lead")}</p>
+      </div>
       {history.loading && !history.data ? <LoadingState label={t("checkIn.loading")} /> : null}
       {history.error ? <ErrorState message={history.error} /> : null}
       {history.data && history.data.length === 0 ? <EmptyState title={t("checkIn.empty")} /> : null}

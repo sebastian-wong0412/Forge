@@ -30,11 +30,11 @@ test("shows first-use onboarding when there are no cycles", () => {
     "href",
     "/cycles",
   );
-  expect(screen.queryByText("今天还没有安排任务")).not.toBeInTheDocument();
+  expect(screen.queryByText("今天还没有安排行动。")).not.toBeInTheDocument();
 });
 
 test("hides onboarding after a cycle exists", () => {
   renderToday([cycle()]);
   expect(screen.queryByText("开始使用 Forge")).not.toBeInTheDocument();
-  expect(screen.getByText("今天还没有安排任务")).toBeInTheDocument();
+  expect(screen.getByText("今天还没有安排行动。")).toBeInTheDocument();
 });

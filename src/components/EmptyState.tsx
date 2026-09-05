@@ -11,7 +11,7 @@ export function EmptyState({
 }) {
   return (
     <div className="state">
-      <p>{title}</p>
+      <p className="state-title">{title}</p>
       {detail ? <p className="muted">{detail}</p> : null}
       {action ? <div className="row" style={{ marginTop: 12 }}>{action}</div> : null}
     </div>

@@ -223,12 +223,20 @@ function KeyResultsSection({
       {loading && keyResults.length === 0 ? <LoadingState /> : null}
       {error ? <ErrorState message={error} /> : null}
       {keyResults.length === 0 && !loading ? (
-        <EmptyState title={t("keyResults.empty.title")} detail={t("keyResults.empty.detail")} />
+        <EmptyState
+          title={t("keyResults.empty.title")}
+          detail={t("keyResults.empty.detail")}
+          action={
+            <a href="#create-key-result" className="btn btn-primary">
+              {t("keyResults.empty.action")}
+            </a>
+          }
+        />
       ) : null}
       {keyResults.map((keyResult) => (
         <KeyResultCard key={keyResult.id} keyResult={keyResult} onChanged={onChanged} />
       ))}
-      <form className="panel stack" onSubmit={onSubmit}>
+      <form id="create-key-result" className="panel stack" onSubmit={onSubmit}>
         <div className="form-grid">
           <div className="field">
             <label htmlFor="kr-title">{t("keyResults.form.title")}</label>
@@ -317,7 +325,14 @@ function KeyResultCard({
       {keyResult.description ? <p>{keyResult.description}</p> : null}
       <p className="muted">{keyResultSummary(keyResult, percent, t)}</p>
       {keyResult.progress !== null ? (
-        <div className="progress" aria-hidden="true">
+        <div
+          className="progress"
+          role="progressbar"
+          aria-label={t("keyResults.progressLabel")}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(keyResult.progress * 100)}
+        >
           <span style={{ width: `${Math.min(100, Math.max(0, keyResult.progress * 100))}%` }} />
         </div>
       ) : null}
@@ -337,7 +352,7 @@ function KeyResultCard({
             className="btn"
             onClick={() => void completeKeyResult(keyResult.id).then(onChanged)}
           >
-            {t("common.complete")}
+            {t("keyResults.complete")}
           </button>
         ) : null}
       </div>
@@ -387,7 +402,15 @@ function ProjectsSection({
       {loading && projects.length === 0 ? <LoadingState /> : null}
       {error ? <ErrorState message={error} /> : null}
       {projects.length === 0 && !loading ? (
-        <EmptyState title={t("projects.empty.title")} detail={t("projects.empty.detail")} />
+        <EmptyState
+          title={t("projects.empty.title")}
+          detail={t("projects.empty.detail")}
+          action={
+            <a href="#create-project" className="btn btn-primary">
+              {t("projects.empty.action")}
+            </a>
+          }
+        />
       ) : null}
       {projects.map((project) => (
         <Link key={project.id} to={`/projects/${project.id}`} className="card card-link">
@@ -398,7 +421,7 @@ function ProjectsSection({
           {project.description ? <p className="muted">{project.description}</p> : null}
         </Link>
       ))}
-      <form className="panel row" onSubmit={onSubmit}>
+      <form id="create-project" className="panel row" onSubmit={onSubmit}>
         <div className="field">
           <label htmlFor="project-title">{t("projects.form.label")}</label>
           <input

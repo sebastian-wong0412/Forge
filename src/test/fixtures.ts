@@ -1,4 +1,4 @@
-import type { Cycle, Task, TodayResponse } from "../api/types";
+import type { Cycle, Project, Task, TodayResponse } from "../api/types";
 
 export function cycle(overrides: Partial<Cycle> = {}): Cycle {
   return {
@@ -6,6 +6,19 @@ export function cycle(overrides: Partial<Cycle> = {}): Cycle {
     name: "Q3 学习计划",
     start_on: "2026-07-01",
     end_on: "2026-09-30",
+    status: "active",
+    created_at: "2026-08-30T09:00:00Z",
+    updated_at: "2026-08-30T09:00:00Z",
+    ...overrides,
+  };
+}
+
+export function project(overrides: Partial<Project> = {}): Project {
+  return {
+    id: "project-1",
+    objective_id: "o1",
+    title: "Machine Learning Course Project",
+    description: null,
     status: "active",
     created_at: "2026-08-30T09:00:00Z",
     updated_at: "2026-08-30T09:00:00Z",

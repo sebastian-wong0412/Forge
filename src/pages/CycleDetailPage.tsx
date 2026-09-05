@@ -162,12 +162,20 @@ function ObjectivesSection({
       {loading && objectives.length === 0 ? <LoadingState /> : null}
       {error ? <ErrorState message={error} /> : null}
       {objectives.length === 0 && !loading ? (
-        <EmptyState title={t("objectives.empty.title")} detail={t("objectives.empty.detail")} />
+        <EmptyState
+          title={t("objectives.empty.title")}
+          detail={t("objectives.empty.detail")}
+          action={
+            <a href="#create-objective" className="btn btn-primary">
+              {t("objectives.empty.action")}
+            </a>
+          }
+        />
       ) : null}
       {objectives.map((objective) => (
         <ObjectiveProjects key={objective.id} objective={objective} />
       ))}
-      <form className="panel row" onSubmit={onSubmit}>
+      <form id="create-objective" className="panel row" onSubmit={onSubmit}>
         <div className="field">
           <label htmlFor="objective-title">{t("objectives.form.label")}</label>
           <input

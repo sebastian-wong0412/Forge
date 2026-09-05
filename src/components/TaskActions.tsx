@@ -29,7 +29,7 @@ export function TaskActions({
       ) : null}
       {task.status === "in_progress" ? (
         <button type="button" className="btn btn-primary" disabled={busy} onClick={onComplete}>
-          {t("common.complete")}
+          {t("tasks.complete")}
         </button>
       ) : null}
       {task.status === "todo" || task.status === "in_progress" ? (

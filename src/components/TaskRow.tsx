@@ -36,8 +36,8 @@ export function TaskRow({
         onClick={() => navigate(`/tasks/${task.id}`)}
       >
         <div className="task-title">{task.title}</div>
+        {projectTitle ? <div className="task-project">{projectTitle}</div> : null}
         <div className="task-meta">
-          {projectTitle ? `${projectTitle} · ` : ""}
           {task.scheduled_on
             ? t("tasks.scheduledOn", { date: formatDisplayDate(task.scheduled_on) })
             : t("tasks.unscheduled")}

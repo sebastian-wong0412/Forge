@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import {
   activateProject,
   archiveProject,
@@ -9,6 +9,8 @@ import {
   getObjective,
   getProject,
   getTasks,
+  scheduleTask,
+  type Task,
 } from "../api";
 import { BackButton } from "../components/BackButton";
 import { Breadcrumbs } from "../components/Breadcrumbs";
@@ -16,6 +18,7 @@ import { DateField } from "../components/DateField";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
+import { NextStep } from "../components/NextStep";
 import { PageHeader } from "../components/PageHeader";
 import { ScheduleDialog } from "../components/ScheduleDialog";
 import { StatusBadge } from "../components/StatusBadge";
@@ -23,6 +26,7 @@ import { TaskList } from "../components/TaskList";
 import { useLoad } from "../hooks/useLoad";
 import { useTaskMutations } from "../hooks/useTaskMutations";
 import { useT } from "../i18n";
+import { localCalendarDate } from "../lib/dates";
 
 export function ProjectDetailPage() {
   const t = useT();
@@ -38,7 +42,9 @@ export function ProjectDetailPage() {
   );
   const tasks = useLoad(() => getTasks(projectId), [projectId]);
   const [error, setError] = useState<string | null>(null);
+  const [createdTask, setCreatedTask] = useState<Task | null>(null);
   const mutations = useTaskMutations(tasks.reload);
+  const localToday = localCalendarDate();
 
   async function run(action: () => Promise<unknown>) {
     setError(null);
@@ -121,7 +127,17 @@ export function ProjectDetailPage() {
       {tasks.loading && !tasks.data ? <LoadingState label={t("tasks.loading")} /> : null}
       {tasks.error && !tasks.data ? <ErrorState message={tasks.error} /> : null}
       {tasks.data && tasks.data.length === 0 ? (
-        <EmptyState title={t("tasks.empty.title")} detail={t("tasks.empty.detail")} />
+        <EmptyState
+          title={t("tasks.empty.title")}
+          detail={t("tasks.empty.detail")}
+          action={
+            canCreateTask ? (
+              <a href="#create-task" className="btn btn-primary">
+                {t("tasks.empty.action")}
+              </a>
+            ) : null
+          }
+        />
       ) : null}
       {tasks.data && tasks.data.length > 0 ? (
         <TaskList
@@ -137,7 +153,52 @@ export function ProjectDetailPage() {
           onUnschedule={mutations.unschedule}
         />
       ) : null}
-      <CreateTaskForm projectId={projectId} disabled={!canCreateTask} onCreated={tasks.reload} />
+      {createdTask && createdTask.scheduled_on === localToday ? (
+        <NextStep
+          title={t("tasks.created.title")}
+          detail={t("tasks.created.scheduledDetail")}
+          action={
+            <Link to="/today" className="btn btn-primary">
+              {t("tasks.created.viewToday")}
+            </Link>
+          }
+        />
+      ) : null}
+      {createdTask && createdTask.scheduled_on !== localToday ? (
+        <NextStep
+          title={t("tasks.created.title")}
+          detail={t("tasks.created.detail")}
+          action={
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() =>
+                void scheduleTask(createdTask.id, localToday)
+                  .then(async (updated) => {
+                    setCreatedTask(updated);
+                    await tasks.reload();
+                  })
+                  .catch((err: unknown) => {
+                    setError(err instanceof Error ? err.message : t("error.scheduleFailed"));
+                  })
+              }
+            >
+              {t("tasks.created.scheduleToday")}
+            </button>
+          }
+        />
+      ) : null}
+      {project.data.status === "draft" ? (
+        <p className="muted">{t("tasks.form.draftHint")}</p>
+      ) : null}
+      <CreateTaskForm
+        projectId={projectId}
+        disabled={!canCreateTask}
+        onCreated={async (task) => {
+          setCreatedTask(task);
+          await tasks.reload();
+        }}
+      />
       {mutations.scheduling ? (
         <ScheduleDialog
           task={mutations.scheduling}
@@ -156,7 +217,7 @@ function CreateTaskForm({
 }: {
   projectId: string;
   disabled: boolean;
-  onCreated: () => Promise<void>;
+  onCreated: (task: Task) => Promise<void>;
 }) {
   const t = useT();
   const [title, setTitle] = useState("");
@@ -168,7 +229,7 @@ function CreateTaskForm({
     event.preventDefault();
     setError(null);
     try {
-      await createTask(projectId, {
+      const created = await createTask(projectId, {
         title,
         description: description || null,
         scheduled_on: scheduledOn || null,
@@ -176,14 +237,14 @@ function CreateTaskForm({
       setTitle("");
       setDescription("");
       setScheduledOn("");
-      await onCreated();
+      await onCreated(created);
     } catch (err) {
       setError(err instanceof Error ? err.message : t("error.createFailed"));
     }
   }
 
   return (
-    <form className="panel stack" onSubmit={onSubmit}>
+    <form id="create-task" className="panel stack" onSubmit={onSubmit}>
       <h2 className="section-title">{t("tasks.form.title")}</h2>
       <div className="form-grid">
         <div className="field">

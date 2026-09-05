@@ -49,10 +49,13 @@ test("reloads check-in history after create", async () => {
     />,
   );
 
-  await screen.findByText("还没有进展。");
+  expect(await screen.findByText("记录关键结果进展")).toBeInTheDocument();
+  expect(screen.getByText("更新你目前距离这个关键结果还有多远。")).toBeInTheDocument();
+  expect(screen.getByText("还没有进展记录。")).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "标记完成" })).not.toBeInTheDocument();
   fireEvent.change(screen.getByLabelText("数值"), { target: { value: "1" } });
   fireEvent.change(screen.getByLabelText("备注"), { target: { value: "First pass" } });
-  fireEvent.click(screen.getByRole("button", { name: "更新进展" }));
+  fireEvent.click(screen.getByRole("button", { name: "记录进展" }));
 
   await waitFor(() => {
     expect(createCheckInMock).toHaveBeenCalled();
@@ -73,7 +76,7 @@ test("qualitative check-in requires a note", async () => {
     />,
   );
 
-  await screen.findByText("还没有进展。");
+  await screen.findByText("还没有进展记录。");
   expect(screen.getByLabelText("说明")).toBeRequired();
   expect(screen.queryByLabelText("数值")).not.toBeInTheDocument();
 });
