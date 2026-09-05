@@ -4,6 +4,20 @@ All notable changes to Forge are documented here.
 
 ## [Unreleased]
 
+## [0.3.3] — 2026-09-05
+
+### Added
+
+- GitHub Actions 在推送 `vMAJOR.MINOR.PATCH` tag 后自动构建 Windows x64 NSIS installer，并创建正式 GitHub Release
+
+### Fixed
+
+- 在 `src-tauri` 的 clippy / test / Tauri build 之前生成 forge-server sidecar，避免全新 CI runner 因 sidecar 缺失失败
+
+### Changed
+
+- GitHub 官方 Actions 升级到 Node.js 24 runtime（`actions/checkout@v5`、`actions/setup-node@v5`、`actions/upload-artifact@v6`）
+
 ## [0.3.2] — 2026-09-05
 
 ### Fixed

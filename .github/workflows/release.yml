@@ -27,7 +27,7 @@ jobs:
     timeout-minutes: 90
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -116,7 +116,7 @@ jobs:
           Write-Host "CHANGELOG section [$version] found ($($notes.Length) characters)"
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -219,7 +219,7 @@ jobs:
           "sha256=$hash" >> $env:GITHUB_OUTPUT
 
       - name: Upload installer artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ steps.installer.outputs.name }}
           path: ${{ steps.installer.outputs.path }}

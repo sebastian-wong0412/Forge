@@ -336,7 +336,7 @@ checksum = "d9c4f5dac5e15c24eb999c26181a6ca40b39fe946cbe4c263c7209467bc83af2"
 
 [[package]]
 name = "forge-application"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "forge-domain",
  "thiserror",
@@ -346,7 +346,7 @@ dependencies = [
 
 [[package]]
 name = "forge-domain"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "thiserror",
  "time",
@@ -355,7 +355,7 @@ dependencies = [
 
 [[package]]
 name = "forge-server"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "axum",
  "dotenvy",
