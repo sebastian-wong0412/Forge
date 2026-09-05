@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { PageHeader } from "../components/PageHeader";
 import { ErrorState } from "../components/ErrorState";
+import { useOptionalExample } from "../example/ExampleProvider";
 import { GITHUB_REPO_URL, useSettings } from "../i18n";
 import {
   checkForUpdates,
@@ -12,6 +14,9 @@ import {
 
 export function SettingsPage() {
   const { preferences, t, setLanguage, setTheme } = useSettings();
+  const navigate = useNavigate();
+  const example = useOptionalExample();
+  const [exploring, setExploring] = useState(false);
   const [version, setVersion] = useState(__FORGE_VERSION__);
   const [update, setUpdate] = useState<UpdateCheck | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
@@ -120,6 +125,22 @@ export function SettingsPage() {
           >
             {t("settings.githubAction")}
           </button>
+          {example ? (
+            <button
+              type="button"
+              className="btn"
+              disabled={exploring}
+              onClick={() => {
+                setExploring(true);
+                void example
+                  .enter()
+                  .then((tree) => navigate(`/cycles/${tree.cycleId}`))
+                  .finally(() => setExploring(false));
+              }}
+            >
+              {t("settings.exampleAction")}
+            </button>
+          ) : null}
         </div>
       </section>
 

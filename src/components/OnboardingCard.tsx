@@ -1,8 +1,26 @@
-import { Link } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useOptionalExample } from "../example/ExampleProvider";
 import { useT } from "../i18n";
 
 export function OnboardingCard() {
   const t = useT();
+  const navigate = useNavigate();
+  const example = useOptionalExample();
+  const [busy, setBusy] = useState(false);
+
+  async function onExplore() {
+    if (!example) {
+      return;
+    }
+    setBusy(true);
+    try {
+      const tree = await example.enter();
+      navigate(`/cycles/${tree.cycleId}`);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <section className="onboarding" aria-labelledby="onboarding-title">
@@ -27,9 +45,16 @@ export function OnboardingCard() {
           <span>{t("onboarding.step4.detail")}</span>
         </li>
       </ol>
-      <Link to="/cycles" className="btn btn-primary">
-        {t("onboarding.cta")}
-      </Link>
+      <div className="row">
+        <Link to="/cycles" className="btn btn-primary">
+          {t("onboarding.cta")}
+        </Link>
+        {example ? (
+          <button type="button" className="btn" disabled={busy} onClick={() => void onExplore()}>
+            {t("onboarding.explore")}
+          </button>
+        ) : null}
+      </div>
     </section>
   );
 }

@@ -8,12 +8,15 @@ import { LoadingState } from "../components/LoadingState";
 import { NextStep } from "../components/NextStep";
 import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
+import { useOptionalExample } from "../example/ExampleProvider";
 import { useLoad } from "../hooks/useLoad";
 import { useT } from "../i18n";
 import { formatDisplayDate } from "../lib/dates";
+import { visibleCycles } from "../lib/exampleWorkspace";
 
 export function CyclesPage() {
   const t = useT();
+  const example = useOptionalExample();
   const { data, error, loading, reload } = useLoad(getCycles, []);
   const [name, setName] = useState("");
   const [startOn, setStartOn] = useState("");
@@ -47,7 +50,7 @@ export function CyclesPage() {
     return <ErrorState message={error} onRetry={() => void reload()} />;
   }
 
-  const cycles = data ?? [];
+  const cycles = example ? visibleCycles(data ?? [], example.state) : (data ?? []);
 
   return (
     <div className="stack">

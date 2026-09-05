@@ -1,8 +1,11 @@
 import { NavLink, Outlet } from "react-router-dom";
+import { useOptionalExample } from "../example/ExampleProvider";
 import { useT } from "../i18n";
+import { ExampleBanner } from "./ExampleBanner";
 
 export function Layout() {
   const t = useT();
+  const example = useOptionalExample();
 
   return (
     <div className="app-shell">
@@ -26,6 +29,7 @@ export function Layout() {
         </nav>
       </aside>
       <main className="main">
+        {example?.active ? <ExampleBanner /> : null}
         <Outlet />
       </main>
     </div>

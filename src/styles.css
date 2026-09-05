@@ -539,6 +539,67 @@ p {
   margin-top: 2px;
 }
 
+.welcome-shell {
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+}
+
+.welcome {
+  width: min(28rem, 100%);
+}
+
+.welcome-kicker {
+  color: var(--muted);
+  margin-bottom: var(--space-3);
+  letter-spacing: 0.04em;
+}
+
+.welcome h1 {
+  font-size: 28px;
+  font-weight: 650;
+  line-height: 1.25;
+  margin-bottom: var(--space-3);
+}
+
+.welcome-lead {
+  color: var(--muted);
+  font-size: 16px;
+}
+
+.welcome-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+}
+
+.example-banner {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  align-items: flex-start;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.example-banner-copy {
+  min-width: 0;
+}
+
+.example-banner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
 .release-notes {
   margin: 0;
   max-height: 240px;
