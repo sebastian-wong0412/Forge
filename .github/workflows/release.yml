@@ -158,6 +158,27 @@ jobs:
       - name: npm run build
         run: npm run build
 
+      - name: Build forge-server sidecar
+        run: npm run sidecar:release
+
+      - name: Verify sidecar
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $triple = (rustc --print host-tuple).Trim()
+          if ($triple -ne "x86_64-pc-windows-msvc") {
+            throw "Expected host triple x86_64-pc-windows-msvc, got '$triple'"
+          }
+          $path = "src-tauri/binaries/forge-server-$triple.exe"
+          if (-not (Test-Path $path)) {
+            throw "Sidecar missing after build: $path"
+          }
+          $file = Get-Item $path
+          if ($file.Length -le 0) {
+            throw "Sidecar is empty: $path"
+          }
+          Write-Host "Sidecar ready: $($file.FullName) ($($file.Length) bytes)"
+
       - name: npm run tauri build
         run: npm run tauri build
 
