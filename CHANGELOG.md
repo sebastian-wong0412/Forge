@@ -4,6 +4,14 @@ All notable changes to Forge are documented here.
 
 ## [Unreleased]
 
+## [0.3.2] — 2026-09-05
+
+### Fixed
+
+- Today 在已有 Cycle 但当天没有任务时，改为从已有周期继续规划，而不再引导用户去创建 Cycle
+- 日期输入恢复选择器，同时保持 `YYYY/MM/DD` 显示
+- 统一各层级创建表单的示例 placeholder，并去掉产品自身相关示例
+
 ## [0.3.1] — 2026-09-05
 
 ### Fixed

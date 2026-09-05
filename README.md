@@ -2,7 +2,7 @@
 
 > Personal execution, organized around outcomes.
 
-[![version](https://img.shields.io/badge/version-v0.3.1-1f1b14)](https://github.com/sebastian-wong0412/Forge)
+[![version](https://img.shields.io/badge/version-v0.3.2-1f1b14)](https://github.com/sebastian-wong0412/Forge)
 [![rust](https://img.shields.io/badge/rust-1.85+-dea584)](https://www.rust-lang.org/)
 [![react](https://img.shields.io/badge/ui-react%2019-61dafb)](https://react.dev/)
 [![tauri](https://img.shields.io/badge/desktop-tauri%202-24c8db)](https://tauri.app/)
@@ -55,7 +55,7 @@ Cycle
 
 ### Windows
 
-Download the Windows x64 installer (`Forge_0.3.1_x64-setup.exe`) from [Releases](https://github.com/sebastian-wong0412/Forge/releases), install Forge, and open it from the Start Menu.
+Download the Windows x64 installer (`Forge_0.3.2_x64-setup.exe`) from [Releases](https://github.com/sebastian-wong0412/Forge/releases), install Forge, and open it from the Start Menu.
 
 You do not need Node, Rust, or a terminal. Forge starts its local backend automatically. Data lives in `%LOCALAPPDATA%\app.forge.desktop`.
 

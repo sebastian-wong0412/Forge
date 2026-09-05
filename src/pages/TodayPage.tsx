@@ -33,7 +33,7 @@ export function TodayPage() {
       <TodayView
         today={data}
         localToday={localToday}
-        hasCycles={(cycles.data?.length ?? 0) > 0}
+        cycles={cycles.data ?? []}
         busyId={mutations.busyId}
         onDateChange={setDate}
         onStart={mutations.start}

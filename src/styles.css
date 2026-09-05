@@ -387,6 +387,59 @@ p {
   opacity: 1;
 }
 
+.date-field {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.date-field-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.date-field-picker {
+  position: relative;
+  flex: 0 0 36px;
+}
+
+.field .date-field-native,
+.date-field-native {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.date-field-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 100%;
+  min-height: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.date-field-icon:hover:not(:disabled),
+.date-field-icon:focus-visible {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.date-field-icon:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
 .field input:focus,
 .field textarea:focus,
 .field select:focus {

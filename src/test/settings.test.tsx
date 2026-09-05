@@ -25,13 +25,13 @@ test("renders Settings general and about sections", async () => {
   expect(screen.getByText("关于 Forge")).toBeInTheDocument();
   expect(screen.getByLabelText("语言")).toHaveValue("system");
   expect(screen.getByLabelText("主题")).toHaveValue("system");
-  expect(await screen.findByText(/0\.3\.1/)).toBeInTheDocument();
+  expect(await screen.findByText(/0\.3\.2/)).toBeInTheDocument();
   expect(screen.getByText(/MIT License/)).toBeInTheDocument();
 });
 
 test("switching language updates navigation immediately", async () => {
   renderSettings();
-  await screen.findByText(/0\.3\.1/);
+  await screen.findByText(/0\.3\.2/);
   fireEvent.change(screen.getByLabelText("语言"), { target: { value: "en" } });
   expect(screen.getByRole("link", { name: "Today" })).toHaveAttribute("href", "/today");
   expect(screen.getByRole("link", { name: "Cycles" })).toHaveAttribute("href", "/cycles");
@@ -41,7 +41,7 @@ test("switching language updates navigation immediately", async () => {
 
 test("switching theme sets data-theme immediately", async () => {
   renderSettings();
-  await screen.findByText(/0\.3\.1/);
+  await screen.findByText(/0\.3\.2/);
   fireEvent.change(screen.getByLabelText("主题"), { target: { value: "dark" } });
   expect(document.documentElement.dataset.theme).toBe("dark");
 });

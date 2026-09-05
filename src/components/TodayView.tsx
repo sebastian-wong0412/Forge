@@ -1,17 +1,19 @@
 import { Link } from "react-router-dom";
-import type { IsoDate, Task, TodayResponse } from "../api/types";
+import type { Cycle, IsoDate, Task, TodayResponse } from "../api/types";
 import { useT } from "../i18n";
 import { formatCalendarDate } from "../lib/dates";
+import { openCycleShortcuts } from "../lib/cycles";
 import { EmptyState } from "./EmptyState";
 import { OnboardingCard } from "./OnboardingCard";
 import { PageHeader } from "./PageHeader";
+import { StatusBadge } from "./StatusBadge";
 import { TaskList } from "./TaskList";
 import { TodayDateNav } from "./TodayDateNav";
 
 export function TodayView({
   today,
   localToday,
-  hasCycles = false,
+  cycles = [],
   busyId,
   onDateChange,
   onStart,
@@ -22,7 +24,7 @@ export function TodayView({
 }: {
   today: TodayResponse;
   localToday: IsoDate;
-  hasCycles?: boolean;
+  cycles?: Cycle[];
   busyId?: string | null;
   onDateChange: (date: IsoDate) => void;
   onStart: (task: Task) => void;
@@ -38,6 +40,7 @@ export function TodayView({
     { title: t("today.section.unscheduled"), tasks: today.unscheduled_in_progress },
     { title: t("today.section.completed"), tasks: today.completed },
   ].filter((section) => section.tasks.length > 0);
+  const shortcuts = openCycleShortcuts(cycles);
 
   return (
     <div className="stack">
@@ -48,18 +51,29 @@ export function TodayView({
           <TodayDateNav date={today.date} localToday={localToday} onChange={onDateChange} />
         }
       />
-      {!hasCycles ? (
+      {cycles.length === 0 ? (
         <OnboardingCard />
       ) : sections.length === 0 ? (
-        <EmptyState
-          title={t("today.empty.title")}
-          detail={t("today.empty.detail")}
-          action={
-            <Link to="/cycles" className="btn btn-primary">
-              {t("today.empty.action")}
+        <div className="stack">
+          <EmptyState title={t("today.empty.title")} detail={t("today.empty.detail")} />
+          {shortcuts.length > 0 ? (
+            <section className="stack" aria-label={t("today.continue.title")}>
+              <h2 className="section-title">{t("today.continue.title")}</h2>
+              {shortcuts.map((cycle) => (
+                <Link key={cycle.id} to={`/cycles/${cycle.id}`} className="card card-link">
+                  <div className="row">
+                    <strong>{cycle.name}</strong>
+                    <StatusBadge status={cycle.status} />
+                  </div>
+                </Link>
+              ))}
+            </section>
+          ) : (
+            <Link to="/cycles" className="btn">
+              {t("today.continue.browse")}
             </Link>
-          }
-        />
+          )}
+        </div>
       ) : (
         <div className="stack">
           {sections.map((section) => (
