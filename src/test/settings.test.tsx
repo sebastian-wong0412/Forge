@@ -23,6 +23,8 @@ test("renders Settings general and about sections", async () => {
   expect(screen.getByRole("heading", { name: "设置" })).toBeInTheDocument();
   expect(screen.getByText("通用")).toBeInTheDocument();
   expect(screen.getByText("关于 Forge")).toBeInTheDocument();
+  expect(screen.getByText("Forge · 铸行")).toBeInTheDocument();
+  expect(screen.getByText("让意图成为行动。")).toBeInTheDocument();
   expect(screen.getByLabelText("语言")).toHaveValue("system");
   expect(screen.getByLabelText("主题")).toHaveValue("system");
   expect(await screen.findByText(/0\.3\.3/)).toBeInTheDocument();
@@ -33,6 +35,8 @@ test("switching language updates navigation immediately", async () => {
   renderSettings();
   await screen.findByText(/0\.3\.3/);
   fireEvent.change(screen.getByLabelText("语言"), { target: { value: "en" } });
+  expect(screen.getByText("About Forge")).toBeInTheDocument();
+  expect(screen.getByText("Turn intentions into execution.")).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Today" })).toHaveAttribute("href", "/today");
   expect(screen.getByRole("link", { name: "Cycles" })).toHaveAttribute("href", "/cycles");
   expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/settings");

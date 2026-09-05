@@ -96,9 +96,15 @@ export function SettingsPage() {
 
       <section className="panel stack">
         <h2 className="section-title">{t("settings.about")}</h2>
-        <p>
-          <strong>Forge</strong>
-        </p>
+        <div className="stack">
+          <p>
+            <strong>{t("settings.aboutBrand")}</strong>
+          </p>
+          <p>{t("settings.aboutTagline")}</p>
+          <p className="muted">{t("settings.aboutLead")}</p>
+          <p className="muted">{t("settings.aboutBody")}</p>
+          <p>{t("settings.aboutClose")}</p>
+        </div>
         <p>
           {t("settings.version")}: {version}
         </p>

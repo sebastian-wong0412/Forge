@@ -1,23 +1,63 @@
 # Forge
 
-> Personal execution, organized around outcomes.
+**Forge · 铸行**
 
-[![version](https://img.shields.io/badge/version-v0.3.2-1f1b14)](https://github.com/sebastian-wong0412/Forge)
-[![rust](https://img.shields.io/badge/rust-1.85+-dea584)](https://www.rust-lang.org/)
-[![react](https://img.shields.io/badge/ui-react%2019-61dafb)](https://react.dev/)
-[![tauri](https://img.shields.io/badge/desktop-tauri%202-24c8db)](https://tauri.app/)
-[![sqlite](https://img.shields.io/badge/data-sqlite-003b57)](https://sqlite.org/)
-[![license](https://img.shields.io/badge/license-MIT-3c3c3c)](./LICENSE)
+**Turn intentions into execution.**
 
-Forge is a local-first personal execution system for turning a season of intent into a day of work.
+把意图，铸成行动。
 
-Plan a cycle. Name the outcome. Break it into projects and tasks. Then open Today — only the work you chose for that day is there.
+Forge is a local-first personal system for moving from what matters to what you do today.
+
+它不是又一个待办清单，也不是一份停在纸面上的目标表。Forge 关心的是中间那段距离：你知道什么重要，和你今天是否真的在做。
+
+[Download for Windows](https://github.com/sebastian-wong0412/Forge/releases/latest) · [Releases](https://github.com/sebastian-wong0412/Forge/releases) · [Source](https://github.com/sebastian-wong0412/Forge)
+
+---
+
+## What is Forge?
+
+Forge gives long-term intent a structure you can act on.
+
+You name where you want to go. You decide what to achieve in a season. You measure progress, organize the work, and schedule the next concrete step. Then Today shows only what belongs to this day.
+
+Forge 是一个个人执行系统：把模糊的意图和长期目标，通过层层拆解，最终落成真实、持续的行动。
 
 Data lives in SQLite on your machine. No account. No cloud. No second source of truth.
 
-The desktop UI supports Simplified Chinese and English, and can follow the Windows language and theme. HTTP identifiers stay in English.
+数据保存在本机 SQLite。没有账号，也没有云端副本。
 
-## Core Concepts
+---
+
+## From intention to execution
+
+This is the meaning Forge is built around:
+
+```
+Vision
+  ↓
+Objective
+  ↓
+Key Result
+  ↓
+Project
+  ↓
+Task
+  ↓
+Daily Execution
+```
+
+| | English | 中文 |
+|---|---|---|
+| **Vision** | Where you want to go | 你想走向哪里 |
+| **Objective** | What you want to achieve | 你想实现什么 |
+| **Key Result** | How you measure progress | 如何衡量进展 |
+| **Project** | How you move toward it | 如何推进它 |
+| **Task** | What needs to be done | 具体需要做什么 |
+| **Daily Execution** | What you do today | 今天真正做什么 |
+
+In the current app, **Cycle** is the planning root: a bounded season of work — a quarter, a launch window, a personal sprint. **Today** is daily execution. It is a projection of the tasks you scheduled, not a second list you maintain by hand.
+
+当前产品以 **Cycle（周期）** 作为规划起点，以 **Today（今日）** 作为每天的执行面。Vision 还不是独立实体；它是 Forge 意图中更上一层的方向，而不是已经实现的功能。
 
 ```
 Cycle
@@ -28,47 +68,70 @@ Cycle
                 └── Today
 ```
 
-**Cycle** is a bounded stretch of time — a quarter, a launch window, a personal sprint.
+---
 
-**Objective** is the result you want inside that cycle.
+## Why Forge?
 
-**Key Result** is how you know the objective is moving. It can be a number, a percentage, a milestone, or a written outcome.
+Most tools stop at one side of the problem.
 
-**Project** is a bundle of work. **Task** is what you actually start and finish.
+A todo app collects work. An OKR doc names outcomes. The gap between them is where plans go quiet.
 
-**Today** is a projection of tasks you scheduled. It is not another list you maintain by hand.
+Forge keeps the hierarchy only so it can collapse back into a day. A cycle exists so an objective has a season. A key result exists so progress is visible. A project exists so work has a place. A task exists so something can be started. Today exists so the rest of the structure can stay out of the way.
+
+目标不是把结构堆得更高，而是让结构最终落到今天的行动上。
+
+---
 
 ## Features
 
-- Outcome-oriented planning, not a dump of every open item
-- Flexible Key Results: numeric, percentage, milestone, qualitative
-- Parent states advance when work actually starts
-- Daily execution through scheduled tasks
-- Settings: Simplified Chinese, English, or follow the Windows language
-- Settings: default (follow Windows) or dark theme
-- About Forge, with the real app version, MIT license, and a GitHub link
-- Check GitHub Releases for a newer version and download the Windows x64 installer — Forge does not install it for you
-- Append-only progress history
-- Local-first architecture: SQLite is the source of truth
+What Forge already does:
 
-## Quick Start
+- Plan work in time-bounded **cycles**, with objectives, projects, and tasks
+- Track progress with **key results**: numeric, percentage, milestone, or written
+- Record **append-only check-ins** — history is not edited away
+- Start work and let the necessary parent cycle, objective, and project become active
+- Open **Today** and see only what you scheduled for that date
+- Review a cycle when the season ends
+- Use the desktop app in **Simplified Chinese** or **English**, or follow Windows
+- Follow the Windows theme, or switch to dark
+- Keep everything **local**: SQLite on this machine
+- Install on **Windows x64** without Node, Rust, or a terminal
+- Check GitHub Releases for a newer installer — Forge does not overwrite itself
+
+---
+
+## Preview
+
+Product screenshots are not in this repository yet.
+
+Use the latest Windows installer if you want to see Forge as it actually runs.
+
+---
+
+## Getting started
 
 ### Windows
 
-Download the Windows x64 installer (`Forge_0.3.2_x64-setup.exe`) from [Releases](https://github.com/sebastian-wong0412/Forge/releases), install Forge, and open it from the Start Menu.
+Download [`Forge_0.3.3_x64-setup.exe`](https://github.com/sebastian-wong0412/Forge/releases/tag/v0.3.3) from [Releases](https://github.com/sebastian-wong0412/Forge/releases).
 
-You do not need Node, Rust, or a terminal. Forge starts its local backend automatically. Data lives in `%LOCALAPPDATA%\app.forge.desktop`.
+Install it, then open Forge from the Start Menu.
+
+You do not need Node.js, Rust, Cargo, or a terminal. The local backend starts with the app. Data lives in `%LOCALAPPDATA%\app.forge.desktop`.
+
+The installer is currently unsigned. Windows SmartScreen may show a warning.
+
+macOS and Linux are not available.
 
 ### From source
 
-Prerequisites: Rust stable, Node.js 22+, npm.
+For development only. Prerequisites: Rust stable, Node.js 22+, npm.
 
 ```bash
 npm install
 npm run tauri dev
 ```
 
-That starts the desktop window and the local API. The developer CLI is still available on its own:
+That opens the desktop window and the local API. The backend can also run on its own:
 
 ```bash
 cargo run -p forge-server
@@ -80,12 +143,38 @@ cargo run -p forge-server
 | Developer CLI API | `http://127.0.0.1:8080` |
 | Vite | `http://localhost:1420` |
 
-## Architecture
+---
+
+## Updates
+
+Forge is in active iteration.
+
+New Windows builds are published on [GitHub Releases](https://github.com/sebastian-wong0412/Forge/releases). In Settings, you can check for a newer version and download the installer. Forge will not replace the current install for you.
+
+Release notes: [CHANGELOG](./CHANGELOG.md)
+
+---
+
+## Roadmap
+
+Direction that is already in view:
+
+- **First-run experience** — planned for v0.4: a quieter onboarding path, and an optional example workspace so the hierarchy is easier to feel
+- **Vision** — a longer-term layer above Cycle; not implemented yet
+- Daily execution will continue to come from **tasks and Today**, not from expanding the frozen `DailyExecution` leftover
+
+No other large roadmap is promised here.
+
+---
+
+## Development
+
+Forge is a local-first desktop app:
 
 ```
 React / TypeScript
         ↓
-      Tauri
+      Tauri 2
         ↓
    Rust HTTP API
         ↓
@@ -98,10 +187,18 @@ React / TypeScript
 
 The backend is authoritative. The desktop client is a view.
 
+```bash
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+npm test
+npm run build
+```
+
 More detail: [docs/architecture.md](docs/architecture.md) · [docs/api.md](docs/api.md) · [docs/database.md](docs/database.md)
+
+---
 
 ## License
 
 [MIT](./LICENSE)
-
-Release notes: [CHANGELOG](./CHANGELOG.md)

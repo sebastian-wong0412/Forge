@@ -212,6 +212,13 @@ export const en: { [K in MessageKey]: string } = {
   "settings.theme.system": "Default / Follow system",
   "settings.theme.dark": "Dark",
   "settings.about": "About Forge",
+  "settings.aboutBrand": "Forge",
+  "settings.aboutTagline": "Turn intentions into execution.",
+  "settings.aboutLead":
+    "Forge is a personal execution system designed to help you turn what you want to achieve into what you actually do.",
+  "settings.aboutBody":
+    "From long-term vision to objectives, key results, projects, tasks, and daily execution, Forge gives your goals a structure you can act on.",
+  "settings.aboutClose": "Build deliberately. Execute daily.",
   "settings.version": "Version",
   "settings.license": "License",
   "settings.licenseValue": "MIT License",
