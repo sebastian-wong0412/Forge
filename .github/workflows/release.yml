@@ -1,0 +1,314 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build and verify without creating a GitHub Release or uploading assets"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: forge-release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch tags
+        run: git fetch --tags --force
+
+      - name: Resolve version and mode
+        id: meta
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $isDispatch = "${{ github.event_name }}" -eq "workflow_dispatch"
+          $dryRunInput = "${{ github.event.inputs.dry_run }}"
+          $dryRun = $isDispatch -and ($dryRunInput -ne "false")
+
+          if ($isDispatch -and -not $dryRun) {
+            throw "Real releases must be triggered by pushing a vMAJOR.MINOR.PATCH tag. workflow_dispatch is dry-run only."
+          }
+
+          function Read-FirstVersion([string]$path, [string]$pattern) {
+            $match = Select-String -Path $path -Pattern $pattern | Select-Object -First 1
+            if (-not $match) {
+              throw "Could not read version from $path"
+            }
+            return $match.Matches[0].Groups[1].Value
+          }
+
+          $cargo = Read-FirstVersion "Cargo.toml" '^version = "([^"]+)"'
+          $tauriCargo = Read-FirstVersion "src-tauri/Cargo.toml" '^version = "([^"]+)"'
+          $package = (Get-Content "package.json" -Raw | ConvertFrom-Json).version
+          $tauriConf = (Get-Content "src-tauri/tauri.conf.json" -Raw | ConvertFrom-Json).version
+
+          if ($dryRun) {
+            $version = $package
+            $tag = "v$version"
+            Write-Host "Dry run: using project version $version (no tag will be created)"
+          } else {
+            $tag = "${{ github.ref_name }}"
+            if ($tag -notmatch '^v(\d+)\.(\d+)\.(\d+)$') {
+              throw "Invalid tag '$tag'. Expected vMAJOR.MINOR.PATCH, for example v0.3.3."
+            }
+            $version = $tag.Substring(1)
+          }
+
+          $sources = @{
+            "Cargo.toml" = $cargo
+            "package.json" = $package
+            "src-tauri/Cargo.toml" = $tauriCargo
+            "src-tauri/tauri.conf.json" = $tauriConf
+          }
+
+          foreach ($name in $sources.Keys) {
+            if ($sources[$name] -ne $version) {
+              throw "Version mismatch: tag/project expects $version but $name is $($sources[$name]). CI will not rewrite version numbers."
+            }
+          }
+
+          Write-Host "Version sources match: $version"
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "tag=v$version" >> $env:GITHUB_OUTPUT
+          if ($dryRun) {
+            "dry_run=true" >> $env:GITHUB_OUTPUT
+          } else {
+            "dry_run=false" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Validate CHANGELOG section
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $version = "${{ steps.meta.outputs.version }}"
+          $changelog = Get-Content "CHANGELOG.md" -Raw
+          $escaped = [regex]::Escape($version)
+          $match = [regex]::Match(
+            $changelog,
+            "(?ms)^## \[$escaped\][^\r\n]*\r?\n(.*?)(?=^## \[|\z)"
+          )
+          if (-not $match.Success) {
+            throw "CHANGELOG.md has no section for [$version]. Add it before tagging."
+          }
+          $notes = $match.Groups[1].Value.Trim()
+          if (-not $notes) {
+            throw "CHANGELOG.md section [$version] exists but is empty."
+          }
+          Write-Host "CHANGELOG section [$version] found ($($notes.Length) characters)"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+          targets: x86_64-pc-windows-msvc
+
+      - name: Cache Rust
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            .
+            src-tauri
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: cargo fmt
+        run: cargo fmt --all -- --check
+
+      - name: cargo clippy (workspace)
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: cargo clippy (tauri)
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+
+      - name: cargo test (workspace)
+        run: cargo test --workspace
+
+      - name: cargo test (tauri)
+        run: cargo test --manifest-path src-tauri/Cargo.toml
+
+      - name: npm test
+        run: npm test
+
+      - name: npm run build
+        run: npm run build
+
+      - name: npm run tauri build
+        run: npm run tauri build
+
+      - name: Verify installer and checksum
+        id: installer
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $version = "${{ steps.meta.outputs.version }}"
+          $expected = "Forge_${version}_x64-setup.exe"
+          $dir = "src-tauri/target/release/bundle/nsis"
+          $candidates = @(Get-ChildItem -Path $dir -Filter "*x64*setup.exe" -ErrorAction Stop)
+
+          if ($candidates.Count -eq 0) {
+            throw "No NSIS installer matching *x64*setup.exe under $dir"
+          }
+          if ($candidates.Count -gt 1) {
+            $names = ($candidates | ForEach-Object { $_.Name }) -join ", "
+            throw "Expected exactly one installer, found $($candidates.Count): $names"
+          }
+
+          $file = $candidates[0]
+          if ($file.Length -le 0) {
+            throw "Installer $($file.Name) is empty"
+          }
+          if ($file.Name -ne $expected) {
+            throw "Installer name '$($file.Name)' does not match required '$expected'"
+          }
+
+          $hash = (Get-FileHash -Path $file.FullName -Algorithm SHA256).Hash.ToLower()
+          Write-Host "Installer: $($file.FullName)"
+          Write-Host "Size: $($file.Length)"
+          Write-Host "SHA-256: $hash"
+
+          "path=$($file.FullName)" >> $env:GITHUB_OUTPUT
+          "name=$($file.Name)" >> $env:GITHUB_OUTPUT
+          "size=$($file.Length)" >> $env:GITHUB_OUTPUT
+          "sha256=$hash" >> $env:GITHUB_OUTPUT
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.installer.outputs.name }}
+          path: ${{ steps.installer.outputs.path }}
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Create GitHub Release
+        id: publish
+        if: steps.meta.outputs.dry_run == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $version = "${{ steps.meta.outputs.version }}"
+          $tag = "${{ steps.meta.outputs.tag }}"
+          $installer = "${{ steps.installer.outputs.path }}"
+          $installerName = "${{ steps.installer.outputs.name }}"
+          $sha = "${{ steps.installer.outputs.sha256 }}"
+
+          $PSNativeCommandUseErrorActionPreference = $false
+          gh release view $tag --json tagName *> $null
+          $alreadyReleased = ($LASTEXITCODE -eq 0)
+          $PSNativeCommandUseErrorActionPreference = $true
+          if ($alreadyReleased) {
+            throw "GitHub Release $tag already exists. Refusing to create a second release or overwrite it."
+          }
+
+          $changelog = Get-Content "CHANGELOG.md" -Raw
+          $escaped = [regex]::Escape($version)
+          $match = [regex]::Match(
+            $changelog,
+            "(?ms)^## \[$escaped\][^\r\n]*\r?\n(.*?)(?=^## \[|\z)"
+          )
+          if (-not $match.Success) {
+            throw "CHANGELOG.md has no section for [$version]. Add it before tagging."
+          }
+
+          $notes = $match.Groups[1].Value.Trim()
+          if (-not $notes) {
+            throw "CHANGELOG.md section [$version] exists but is empty."
+          }
+
+          $appendix = @(
+            "",
+            "### Windows",
+            "",
+            "Download ``$installerName`` and run the installer.",
+            "",
+            "Forge runs locally on Windows and does not require Node.js, Rust, Cargo, or a terminal.",
+            "",
+            "The installer is currently unsigned, so Windows SmartScreen may display a warning.",
+            "",
+            "SHA-256:",
+            "",
+            "``$sha``"
+          ) -join "`n"
+          $body = $notes.TrimEnd() + $appendix
+          $notesFile = Join-Path $env:RUNNER_TEMP "release-notes.md"
+          Set-Content -Path $notesFile -Value $body -Encoding utf8
+
+          gh release create $tag $installer `
+            --title "Forge v$version" `
+            --notes-file $notesFile `
+            --verify-tag
+
+          $release = gh release view $tag --json tagName,url,assets | ConvertFrom-Json
+          if ($release.tagName -ne $tag) {
+            throw "Created release tag '$($release.tagName)' does not match $tag"
+          }
+
+          $asset = @($release.assets | Where-Object { $_.name -eq $installerName })
+          if ($asset.Count -ne 1) {
+            throw "Release $tag does not contain exactly one asset named $installerName"
+          }
+
+          $apiAsset = gh api "repos/$env:GITHUB_REPOSITORY/releases/assets/$($asset[0].id)" | ConvertFrom-Json
+          if ($apiAsset.state -ne "uploaded" -or $apiAsset.name -ne $installerName) {
+            throw "Release asset verification failed for $installerName"
+          }
+
+          "url=$($release.url)" >> $env:GITHUB_OUTPUT
+
+      - name: Release summary
+        if: always() && steps.meta.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $version = "${{ steps.meta.outputs.version }}"
+          $tag = "${{ steps.meta.outputs.tag }}"
+          $dryRun = "${{ steps.meta.outputs.dry_run }}"
+          $name = "${{ steps.installer.outputs.name }}"
+          $size = "${{ steps.installer.outputs.size }}"
+          $sha = "${{ steps.installer.outputs.sha256 }}"
+          $url = "${{ steps.publish.outputs.url }}"
+          if (-not $url) { $url = "(not created; dry-run)" }
+
+          $summary = @(
+            "Forge Release Summary",
+            "",
+            "Version: $version",
+            "Tag: $tag",
+            "Dry run: $dryRun",
+            "Installer: $name",
+            "Size: $size bytes",
+            "SHA-256: $sha",
+            "Authenticode: NotSigned",
+            "Release: $url"
+          ) -join "`n"
+
+          Write-Host $summary
+          $summary >> $env:GITHUB_STEP_SUMMARY
