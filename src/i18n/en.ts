@@ -136,7 +136,6 @@ export const en: { [K in MessageKey]: string } = {
   "cycles.empty.title": "No cycles yet",
   "cycles.empty.detail":
     "A cycle is how Forge groups a stretch of work — a season, a quarter, a launch window, or a personal sprint.",
-  "cycles.empty.action": "Create a cycle",
   "cycles.example.q3": "Q3 2026",
   "cycles.example.study": "Autumn study plan",
   "cycles.example.launch": "Product launch window",

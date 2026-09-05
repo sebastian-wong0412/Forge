@@ -56,15 +56,7 @@ export function CyclesPage() {
     <div className="stack">
       <PageHeader kicker={t("cycles.kicker")} title={t("cycles.title")} meta={t("cycles.meta")} />
       {cycles.length === 0 ? (
-        <EmptyState
-          title={t("cycles.empty.title")}
-          detail={t("cycles.empty.detail")}
-          action={
-            <a href="#create-cycle" className="btn btn-primary">
-              {t("cycles.empty.action")}
-            </a>
-          }
-        />
+        <EmptyState title={t("cycles.empty.title")} detail={t("cycles.empty.detail")} />
       ) : null}
       {cycles.length === 0 ? (
         <ul className="muted example-list">

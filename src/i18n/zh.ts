@@ -134,7 +134,6 @@ export const zh = {
   "cycles.empty.title": "还没有周期",
   "cycles.empty.detail":
     "周期是 Forge 中组织一段时间工作的起点。你可以把它理解为一个阶段、季度、项目周期或个人计划。",
-  "cycles.empty.action": "创建周期",
   "cycles.example.q3": "Q3 2026",
   "cycles.example.study": "秋季学习计划",
   "cycles.example.launch": "产品上线阶段",

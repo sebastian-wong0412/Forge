@@ -4,6 +4,40 @@ All notable changes to Forge are documented here.
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-09-06
+
+### Added
+
+- First-run Welcome experience for new users
+- Example Workspace demonstrating the complete Forge execution model
+- Lightweight "How Forge works" concept tour
+- Persistent onboarding / example state
+
+### Improved
+
+- Execution-focused Today experience
+- Empty states with contextual next actions
+- Project context displayed in Today task rows
+- Clear distinction between Key Result Check-ins and Task completion
+- Consistent navigation and Back behavior
+- Form submission/loading states
+- Keyboard focus visibility
+- Bilingual product identity and About Forge content
+- Consistent English / Chinese placeholders and terminology
+- Cycles empty-state UX
+
+### Fixed
+
+- Duplicate Create Cycle action in the empty Cycles page
+- Example exit navigation history
+- Error states for onboarding / example operations
+- Duplicate form submission opportunities
+- Terminology ambiguity between progress and task completion
+
+### Notes
+
+- Windows installer remains unsigned. Windows SmartScreen may display a warning.
+
 ## [0.3.3] — 2026-09-05
 
 ### Added
