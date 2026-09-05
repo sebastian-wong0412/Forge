@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useExample } from "../example/ExampleProvider";
 import { useT } from "../i18n";
 import { ConceptTour } from "./ConceptTour";
+import { ErrorState } from "./ErrorState";
 
 export function ExampleBanner() {
   const t = useT();
@@ -14,7 +15,7 @@ export function ExampleBanner() {
 
   function onExit() {
     example.exit();
-    navigate("/today");
+    navigate("/today", { replace: true });
   }
 
   async function onReset() {
@@ -37,7 +38,7 @@ export function ExampleBanner() {
           <strong>{t("example.banner.title")}</strong>
         </p>
         <p className="muted">{t("example.banner.detail")}</p>
-        {error ? <p className="muted">{error}</p> : null}
+        {error ? <ErrorState message={error} /> : null}
       </div>
       <div className="example-banner-actions">
         <button type="button" className="btn" onClick={() => setTourOpen(true)}>
@@ -46,7 +47,7 @@ export function ExampleBanner() {
         <button type="button" className="btn" disabled={resetting} onClick={() => void onReset()}>
           {resetting ? t("example.resetting") : t("example.reset")}
         </button>
-        <button type="button" className="btn" onClick={onExit}>
+        <button type="button" className="btn btn-primary" onClick={onExit}>
           {t("example.exit")}
         </button>
       </div>

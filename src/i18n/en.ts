@@ -108,6 +108,7 @@ export const en: { [K in MessageKey]: string } = {
   "example.reset": "Reset example",
   "example.resetting": "Resetting…",
   "example.resetFailed": "Could not reset the example. Please try again.",
+  "example.enterFailed": "Could not open the example. Please try again.",
   "example.how": "How Forge works",
 
   "tour.title": "How Forge works",
@@ -249,7 +250,7 @@ export const en: { [K in MessageKey]: string } = {
   "checkIn.section": "Check-in history",
   "checkIn.value": "Value",
   "checkIn.percentage": "Percentage",
-  "checkIn.state": "Progress",
+  "checkIn.state": "Milestone",
   "checkIn.date": "Date",
   "checkIn.note": "Note",
   "checkIn.noteRequired": "Note",

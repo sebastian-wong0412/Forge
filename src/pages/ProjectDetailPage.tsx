@@ -43,6 +43,7 @@ export function ProjectDetailPage() {
   const tasks = useLoad(() => getTasks(projectId), [projectId]);
   const [error, setError] = useState<string | null>(null);
   const [createdTask, setCreatedTask] = useState<Task | null>(null);
+  const [schedulingToday, setSchedulingToday] = useState(false);
   const mutations = useTaskMutations(tasks.reload);
   const localToday = localCalendarDate();
 
@@ -172,7 +173,9 @@ export function ProjectDetailPage() {
             <button
               type="button"
               className="btn btn-primary"
-              onClick={() =>
+              disabled={schedulingToday}
+              onClick={() => {
+                setSchedulingToday(true);
                 void scheduleTask(createdTask.id, localToday)
                   .then(async (updated) => {
                     setCreatedTask(updated);
@@ -181,7 +184,8 @@ export function ProjectDetailPage() {
                   .catch((err: unknown) => {
                     setError(err instanceof Error ? err.message : t("error.scheduleFailed"));
                   })
-              }
+                  .finally(() => setSchedulingToday(false));
+              }}
             >
               {t("tasks.created.scheduleToday")}
             </button>
@@ -224,10 +228,12 @@ function CreateTaskForm({
   const [description, setDescription] = useState("");
   const [scheduledOn, setScheduledOn] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setError(null);
+    setBusy(true);
     try {
       const created = await createTask(projectId, {
         title,
@@ -240,6 +246,8 @@ function CreateTaskForm({
       await onCreated(created);
     } catch (err) {
       setError(err instanceof Error ? err.message : t("error.createFailed"));
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -280,7 +288,7 @@ function CreateTaskForm({
       {disabled ? <p className="muted">{t("tasks.form.disabled")}</p> : null}
       {error ? <ErrorState message={error} /> : null}
       <div>
-        <button type="submit" className="btn btn-primary" disabled={disabled}>
+        <button type="submit" className="btn btn-primary" disabled={disabled || busy}>
           {t("tasks.form.submit")}
         </button>
       </div>

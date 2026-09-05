@@ -143,16 +143,20 @@ function ObjectivesSection({
   const t = useT();
   const [title, setTitle] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setFormError(null);
+    setBusy(true);
     try {
       const created = await createObjective(cycleId, { title });
       setTitle("");
       await onCreated(created);
     } catch (err) {
       setFormError(err instanceof Error ? err.message : t("error.createFailed"));
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -186,7 +190,7 @@ function ObjectivesSection({
             required
           />
         </div>
-        <button type="submit" className="btn btn-primary">
+        <button type="submit" className="btn btn-primary" disabled={busy}>
           {t("common.add")}
         </button>
       </form>
@@ -238,10 +242,12 @@ function ReviewsSection({
   const [periodStart, setPeriodStart] = useState("");
   const [periodEnd, setPeriodEnd] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setFormError(null);
+    setBusy(true);
     try {
       await createReview(cycleId, {
         content,
@@ -254,6 +260,8 @@ function ReviewsSection({
       await onCreated();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : t("error.createFailed"));
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -298,7 +306,7 @@ function ReviewsSection({
         </div>
         {formError ? <ErrorState message={formError} /> : null}
         <div>
-          <button type="submit" className="btn btn-primary">
+          <button type="submit" className="btn btn-primary" disabled={busy}>
             {t("reviews.form.submit")}
           </button>
         </div>

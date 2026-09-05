@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { ErrorState } from "./ErrorState";
 import { useOptionalExample } from "../example/ExampleProvider";
 import { useT } from "../i18n";
 
@@ -8,15 +9,19 @@ export function OnboardingCard() {
   const navigate = useNavigate();
   const example = useOptionalExample();
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function onExplore() {
     if (!example) {
       return;
     }
     setBusy(true);
+    setError(null);
     try {
       const tree = await example.enter();
       navigate(`/cycles/${tree.cycleId}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("example.enterFailed"));
     } finally {
       setBusy(false);
     }
@@ -45,6 +50,7 @@ export function OnboardingCard() {
           <span>{t("onboarding.step4.detail")}</span>
         </li>
       </ol>
+      {error ? <ErrorState message={error} /> : null}
       <div className="row">
         <Link to="/cycles" className="btn btn-primary">
           {t("onboarding.cta")}

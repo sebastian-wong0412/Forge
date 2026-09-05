@@ -17,6 +17,7 @@ export function SettingsPage() {
   const navigate = useNavigate();
   const example = useOptionalExample();
   const [exploring, setExploring] = useState(false);
+  const [exploreError, setExploreError] = useState<string | null>(null);
   const [version, setVersion] = useState(__FORGE_VERSION__);
   const [update, setUpdate] = useState<UpdateCheck | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
@@ -117,6 +118,7 @@ export function SettingsPage() {
           {t("settings.license")}: {t("settings.licenseValue")}
         </p>
         <p className="muted">{GITHUB_REPO_URL}</p>
+        {exploreError ? <ErrorState message={exploreError} /> : null}
         <div className="row">
           <button
             type="button"
@@ -132,9 +134,15 @@ export function SettingsPage() {
               disabled={exploring}
               onClick={() => {
                 setExploring(true);
+                setExploreError(null);
                 void example
                   .enter()
                   .then((tree) => navigate(`/cycles/${tree.cycleId}`))
+                  .catch((err: unknown) => {
+                    setExploreError(
+                      err instanceof Error ? err.message : t("example.enterFailed"),
+                    );
+                  })
                   .finally(() => setExploring(false));
               }}
             >

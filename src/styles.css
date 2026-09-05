@@ -288,9 +288,8 @@ p {
 }
 
 .task-row:hover,
-.task-row:focus-visible {
+.task-row:has(.task-row-open:focus-visible) {
   border-color: var(--accent);
-  outline: none;
 }
 
 .task-status {
@@ -319,9 +318,14 @@ p {
   cursor: pointer;
 }
 
-.task-row-open:hover,
-.task-row-open:focus-visible {
+.task-row-open:hover {
   outline: none;
+}
+
+.task-row-open:focus-visible {
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 .task-meta {
@@ -552,6 +556,7 @@ p {
 }
 
 .welcome-shell {
+  height: 100%;
   min-height: 100%;
   display: flex;
   align-items: center;

@@ -106,6 +106,7 @@ export const zh = {
   "example.reset": "重置示例",
   "example.resetting": "正在重置…",
   "example.resetFailed": "无法重置示例。请稍后重试。",
+  "example.enterFailed": "无法打开示例。请稍后重试。",
   "example.how": "Forge 如何工作",
 
   "tour.title": "Forge 如何工作",
@@ -246,7 +247,7 @@ export const zh = {
   "checkIn.section": "进展记录",
   "checkIn.value": "数值",
   "checkIn.percentage": "百分比",
-  "checkIn.state": "进展",
+  "checkIn.state": "里程碑",
   "checkIn.date": "记录日期",
   "checkIn.note": "备注",
   "checkIn.noteRequired": "说明",

@@ -28,10 +28,12 @@ export function CheckInPanel({
   const [note, setNote] = useState("");
   const [checkedOn, setCheckedOn] = useState(localCalendarDate());
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setError(null);
+    setBusy(true);
     try {
       await createCheckIn(keyResultId, {
         value:
@@ -46,6 +48,8 @@ export function CheckInPanel({
       await onKeyResultChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : t("error.createFailed"));
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -134,7 +138,7 @@ export function CheckInPanel({
         </div>
         {error ? <ErrorState message={error} /> : null}
         <div>
-          <button type="submit" className="btn">
+          <button type="submit" className="btn btn-primary" disabled={busy}>
             {t("checkIn.submit")}
           </button>
         </div>

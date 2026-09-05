@@ -189,10 +189,12 @@ function KeyResultsSection({
   const [targetValue, setTargetValue] = useState("");
   const [unit, setUnit] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setFormError(null);
+    setBusy(true);
     try {
       await createKeyResult(objectiveId, {
         title,
@@ -214,6 +216,8 @@ function KeyResultsSection({
       await onChanged();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : t("error.createFailed"));
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -296,7 +300,7 @@ function KeyResultsSection({
         </div>
         {formError ? <ErrorState message={formError} /> : null}
         <div>
-          <button type="submit" className="btn btn-primary">
+          <button type="submit" className="btn btn-primary" disabled={busy}>
             {t("keyResults.form.submit")}
           </button>
         </div>
@@ -382,10 +386,12 @@ function ProjectsSection({
   const [title, setTitle] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [draftCreated, setDraftCreated] = useState<Project | null>(null);
+  const [busy, setBusy] = useState(false);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setFormError(null);
+    setBusy(true);
     try {
       const created = await createProject(objectiveId, { title });
       setTitle("");
@@ -393,6 +399,8 @@ function ProjectsSection({
       await onCreated();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : t("error.createFailed"));
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -432,7 +440,7 @@ function ProjectsSection({
             required
           />
         </div>
-        <button type="submit" className="btn btn-primary">
+        <button type="submit" className="btn btn-primary" disabled={busy}>
           {t("common.add")}
         </button>
       </form>
