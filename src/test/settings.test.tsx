@@ -27,13 +27,13 @@ test("renders Settings general and about sections", async () => {
   expect(screen.getByText("把意图，铸成行动。")).toBeInTheDocument();
   expect(screen.getByLabelText("语言")).toHaveValue("system");
   expect(screen.getByLabelText("主题")).toHaveValue("system");
-  expect(await screen.findByText(/0\.4\.0/)).toBeInTheDocument();
+  expect(await screen.findByText(/0\.4\.1/)).toBeInTheDocument();
   expect(screen.getByText(/MIT License/)).toBeInTheDocument();
 });
 
 test("switching language updates navigation immediately", async () => {
   renderSettings();
-  await screen.findByText(/0\.4\.0/);
+  await screen.findByText(/0\.4\.1/);
   fireEvent.change(screen.getByLabelText("语言"), { target: { value: "en" } });
   expect(screen.getByText("About Forge")).toBeInTheDocument();
   expect(screen.getByText("Turn intentions into execution.")).toBeInTheDocument();
@@ -45,7 +45,7 @@ test("switching language updates navigation immediately", async () => {
 
 test("switching theme sets data-theme immediately", async () => {
   renderSettings();
-  await screen.findByText(/0\.4\.0/);
+  await screen.findByText(/0\.4\.1/);
   fireEvent.change(screen.getByLabelText("主题"), { target: { value: "dark" } });
   expect(document.documentElement.dataset.theme).toBe("dark");
 });

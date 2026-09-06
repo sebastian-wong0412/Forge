@@ -2,7 +2,7 @@
 
 [package]
 name = "forge-desktop"
-version = "0.4.0"
+version = "0.4.1"
 description = "Forge desktop shell"
 authors = ["Forge"]
 edition = "2021"

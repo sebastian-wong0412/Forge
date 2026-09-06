@@ -4,6 +4,18 @@ All notable changes to Forge are documented here.
 
 ## [Unreleased]
 
+## [0.4.1] — 2026-09-06
+
+### Product experience
+
+- Refined Forge's product identity and bilingual positioning.
+- Aligned the Chinese About Forge tagline with the official brand line.
+
+### Visual identity
+
+- Added the official Forge icon and refreshed application icon assets.
+- Refreshed the README with new product visuals and bilingual product messaging.
+
 ## [0.4.0] — 2026-09-06
 
 ### Added
