@@ -6,9 +6,13 @@
 
 把意图，铸成行动。
 
-Forge is a local-first personal system for moving from what matters to what you do today.
+Forge is a focused personal execution system that helps turn goals into concrete daily action.
 
-它不是又一个待办清单，也不是一份停在纸面上的目标表。Forge 关心的是中间那段距离：你知道什么重要，和你今天是否真的在做。
+Forge 是一个专注的个人执行系统：把目标，变成今天真正发生的行动。
+
+<p align="center">
+  <img src="docs/assets/forge-hero.png" alt="Forge Example Workspace — an objective, key result, and project collapsing into today's work" width="920">
+</p>
 
 [Download for Windows](https://github.com/sebastian-wong0412/Forge/releases/latest) · [Releases](https://github.com/sebastian-wong0412/Forge/releases) · [Source](https://github.com/sebastian-wong0412/Forge)
 
@@ -20,7 +24,11 @@ Forge gives long-term intent a structure you can act on.
 
 You name where you want to go. You decide what to achieve in a season. You measure progress, organize the work, and schedule the next concrete step. Then Today shows only what belongs to this day.
 
-Forge 是一个个人执行系统：把模糊的意图和长期目标，通过层层拆解，最终落成真实、持续的行动。
+Forge 把模糊的意图和长期目标，通过层层拆解，最终落成真实、持续的行动。
+
+It is not another todo list. It is not a goal document that stays on the page. Forge is built for the distance between knowing what matters and actually doing it.
+
+它不是又一个待办清单，也不是一份停在纸面上的目标表。Forge 关心的是中间那段距离：你知道什么重要，和你今天是否真的在做。
 
 Data lives in SQLite on your machine. No account. No cloud. No second source of truth.
 
@@ -28,23 +36,19 @@ Data lives in SQLite on your machine. No account. No cloud. No second source of 
 
 ---
 
-## From intention to execution
+## Product philosophy
 
-This is the meaning Forge is built around:
+Goals do not execute themselves. A system can hold the shape of an intention — and you still have to take the next step.
 
-```
-Vision
-  ↓
-Objective
-  ↓
-Key Result
-  ↓
-Project
-  ↓
-Task
-  ↓
-Daily Execution
-```
+目标不会自己完成。系统可以托住意图的形状，但下一步仍然要你来走。
+
+<p align="center">
+  <img src="docs/assets/forge-philosophy.png" alt="Forge philosophy — Intention, Structure, Action, Execution" width="920">
+</p>
+
+Forge is organized around one conceptual chain:
+
+**Vision → Objective → Key Result → Project → Task → Daily Execution**
 
 | | English | 中文 |
 |---|---|---|
@@ -55,42 +59,51 @@ Daily Execution
 | **Task** | What needs to be done | 具体需要做什么 |
 | **Daily Execution** | What you do today | 今天真正做什么 |
 
-In the current app, **Cycle** is the planning root: a bounded season of work — a quarter, a launch window, a personal sprint. **Today** is daily execution. It is a projection of the tasks you scheduled, not a second list you maintain by hand.
+**Vision** is a product idea: the longer direction above a season of work. It is not a page in this version.
 
-当前产品以 **Cycle（周期）** 作为规划起点，以 **Today（今日）** 作为每天的执行面。Vision 还不是独立实体；它是 Forge 意图中更上一层的方向，而不是已经实现的功能。
+**Vision** 是产品理念，是周期之上更长的方向。当前版本还没有独立页面。
 
-```
-Cycle
- └── Objective
-      ├── Key Result
-      └── Project
-           └── Task
-                └── Today
-```
+In the app, **Cycle** is the planning root — a quarter, a launch window, a personal sprint. **Today** is daily execution. It is a projection of the tasks you scheduled, not a second list you maintain by hand.
+
+当前产品以 **Cycle（周期）** 作为规划起点，以 **Today（今日）** 作为每天的执行面。
 
 ---
 
-## Why Forge?
+## How Forge turns intentions into execution
 
-Most tools stop at one side of the problem.
+The hierarchy exists only so it can collapse back into a day.
 
-A todo app collects work. An OKR doc names outcomes. The gap between them is where plans go quiet.
+结构存在，是为了能收回到这一天。
 
-Forge keeps the hierarchy only so it can collapse back into a day. A cycle exists so an objective has a season. A key result exists so progress is visible. A project exists so work has a place. A task exists so something can be started. Today exists so the rest of the structure can stay out of the way.
+<p align="center">
+  <img src="docs/assets/forge-workflow.png" alt="Forge workflow — from vision and objective to today's execution" width="920">
+</p>
 
-目标不是把结构堆得更高，而是让结构最终落到今天的行动上。
+The practical loop is:
+
+**Intent → Outcome → Project → Task → Schedule → Today → Execute → Review / Progress**
+
+- A **cycle** gives the work a season.
+- An **objective** names the outcome that matters.
+- A **key result** makes progress measurable. A **check-in** records where you are against that outcome. It is not a task.
+- A **project** is the path of work.
+- A **task** is something you can actually do.
+- **Today** is where you decide what to do now — then start it, or mark it complete.
+
+关键结果衡量进展；Check-in 记录进展。任务是真正去做的事。Today 决定今天做什么。
+
+不要把 Check-in 当成任务完成，也不要把任务完成当成关键结果已经达成。
 
 ---
 
-## Features
+## What Forge already does
 
-What Forge already does:
-
+- First-run Welcome, with an optional **Example Workspace** so the hierarchy is easier to feel
 - Plan work in time-bounded **cycles**, with objectives, projects, and tasks
 - Track progress with **key results**: numeric, percentage, milestone, or written
 - Record **append-only check-ins** — history is not edited away
 - Start work and let the necessary parent cycle, objective, and project become active
-- Open **Today** and see only what you scheduled for that date
+- Open **Today** and see only what you scheduled for that date, with the project that owns each task
 - Review a cycle when the season ends
 - Use the desktop app in **Simplified Chinese** or **English**, or follow Windows
 - Follow the Windows theme, or switch to dark
@@ -100,19 +113,11 @@ What Forge already does:
 
 ---
 
-## Preview
-
-Product screenshots are not in this repository yet.
-
-Use the latest Windows installer if you want to see Forge as it actually runs.
-
----
-
 ## Getting started
 
 ### Windows
 
-Download [`Forge_0.3.3_x64-setup.exe`](https://github.com/sebastian-wong0412/Forge/releases/tag/v0.3.3) from [Releases](https://github.com/sebastian-wong0412/Forge/releases).
+Download the latest installer from [Releases](https://github.com/sebastian-wong0412/Forge/releases/latest).
 
 Install it, then open Forge from the Start Menu.
 
@@ -159,7 +164,6 @@ Release notes: [CHANGELOG](./CHANGELOG.md)
 
 Direction that is already in view:
 
-- **First-run experience** — planned for v0.4: a quieter onboarding path, and an optional example workspace so the hierarchy is easier to feel
 - **Vision** — a longer-term layer above Cycle; not implemented yet
 - Daily execution will continue to come from **tasks and Today**, not from expanding the frozen `DailyExecution` leftover
 

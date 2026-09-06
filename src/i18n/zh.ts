@@ -264,7 +264,7 @@ export const zh = {
   "settings.theme.dark": "深色",
   "settings.about": "关于 Forge",
   "settings.aboutBrand": "Forge · 铸行",
-  "settings.aboutTagline": "让意图成为行动。",
+  "settings.aboutTagline": "把意图，铸成行动。",
   "settings.aboutLead":
     "Forge 是一个专注于个人执行的目标管理系统，帮助你把想实现的事情，逐步转化为真正发生的行动。",
   "settings.aboutBody":
